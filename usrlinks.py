@@ -1,31 +1,28 @@
+#!/usr/bin/env python3
+"""
+USRLINKS - Social Media Username Availability Checker
+Python 3.5+ compatible version
+"""
+
 import os
 import sys
 import time
 import requests
 import argparse
 from datetime import datetime
-from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 
 # Import styling libraries
 try:
-    from colorama import init, Fore, Back, Style
+    from colorama import init, Fore, Style
     from pyfiglet import Figlet
     from tqdm import tqdm
-    from rich.console import Console
-    from rich.table import Table
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    import rich.box as box
 except ImportError:
     print("Required libraries not found. Installing now...")
-    os.system("pip install colorama pyfiglet tqdm rich requests")
-    from colorama import init, Fore, Back, Style
+    os.system("pip3 install colorama pyfiglet tqdm requests")
+    from colorama import init, Fore, Style
     from pyfiglet import Figlet
     from tqdm import tqdm
-    from rich.console import Console
-    from rich.table import Table
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    import rich.box as box
 
 # Initialize colorama
 init(autoreset=True)
@@ -37,32 +34,15 @@ PLATFORMS = {
     "Instagram": "https://instagram.com/{}",
     "Reddit": "https://reddit.com/user/{}",
     "TikTok": "https://tiktok.com/@{}",
-    "Pinterest": "https://pinterest.com/{}",
-    "Steam": "https://steamcommunity.com/id/{}",
     "YouTube": "https://youtube.com/{}",
-    "Twitch": "https://twitch.tv/{}",
-    "Vimeo": "https://vimeo.com/{}",
-    "SoundCloud": "https://soundcloud.com/{}",
-    "DeviantArt": "https://{}.deviantart.com",
-    "Flickr": "https://flickr.com/people/{}",
-    "Medium": "https://medium.com/@{}",
-    "Quora": "https://quora.com/profile/{}",
-    "Tumblr": "https://{}.tumblr.com",
-    "WordPress": "https://{}.wordpress.com",
-    "Spotify": "https://open.spotify.com/user/{}",
-    "Patreon": "https://patreon.com/{}",
-    "Wikipedia": "https://en.wikipedia.org/wiki/User:{}",
-    "Slack": "https://{}.slack.com",
-    "Discord": "https://discordapp.com/users/{}",  # Note: Discord usernames have #discriminator
+    "Twitch": "https://twitch.tv/{}"
 }
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-
-# Initialize console
-console = Console()
+REQUEST_TIMEOUT = 10
 
 class UsernameChecker:
-    def __init__(self, verbose: bool = False, use_tor: bool = False):
+    def __init__(self, verbose=False, use_tor=False):
         self.verbose = verbose
         self.use_tor = use_tor
         self.session = requests.Session()
@@ -80,19 +60,19 @@ class UsernameChecker:
             }
             # Test Tor connection
             test_url = "https://check.torproject.org/api/ip"
-            response = self.session.get(test_url)
+            response = self.session.get(test_url, timeout=REQUEST_TIMEOUT)
             if "Congratulations" not in response.text:
-                console.print("[red]Tor is not working properly. Falling back to direct connection.[/red]")
+                print(Fore.YELLOW + "Tor is not working properly. Falling back to direct connection.")
                 self.use_tor = False
                 self.session.proxies = {}
             else:
-                console.print("[green]✓ Tor connection established[/green]")
+                print(Fore.GREEN + "✓ Tor connection established")
         except Exception as e:
-            console.print(f"[red]Tor configuration failed: {e}[/red]")
+            print(Fore.RED + f"Tor configuration failed: {e}")
             self.use_tor = False
             self.session.proxies = {}
 
-    def check_username(self, username: str, platform: str) -> Dict[str, str]:
+    def check_username(self, username, platform):
         """Check username availability on a specific platform"""
         url = PLATFORMS[platform].format(username)
         result = {
@@ -105,70 +85,70 @@ class UsernameChecker:
 
         try:
             if platform == "GitHub":
-                response = self.session.get(f"https://api.github.com/users/{username}", timeout=10)
+                response = self.session.get(f"https://api.github.com/users/{username}", timeout=REQUEST_TIMEOUT)
                 result["available"] = response.status_code == 404
             elif platform == "Twitter":
-                response = self.session.get(f"https://twitter.com/{username}", timeout=10)
+                response = self.session.get(f"https://twitter.com/{username}", timeout=REQUEST_TIMEOUT)
                 result["available"] = response.status_code == 404 or "This account doesn't exist" in response.text
             elif platform == "Instagram":
-                response = self.session.get(f"https://www.instagram.com/{username}/?__a=1", timeout=10)
+                response = self.session.get(f"https://www.instagram.com/{username}/?__a=1", timeout=REQUEST_TIMEOUT)
                 result["available"] = response.status_code == 404
             elif platform == "Reddit":
-                response = self.session.get(f"https://www.reddit.com/user/{username}/about.json", timeout=10)
+                response = self.session.get(f"https://www.reddit.com/user/{username}/about.json", timeout=REQUEST_TIMEOUT)
                 result["available"] = response.status_code == 404
             elif platform == "TikTok":
-                response = self.session.get(f"https://www.tiktok.com/@{username}", timeout=10)
+                response = self.session.get(f"https://www.tiktok.com/@{username}", timeout=REQUEST_TIMEOUT)
                 result["available"] = response.status_code == 404 or "Couldn't find this account" in response.text
             else:
                 # Generic check for other platforms
-                response = self.session.get(url, timeout=10)
+                response = self.session.get(url, timeout=REQUEST_TIMEOUT)
                 result["available"] = response.status_code == 404
 
             if result["available"] is not None:
-                result["status"] = "✅ Available" if result["available"] else "❌ Taken"
+                result["status"] = "✓ Available" if result["available"] else "✗ Taken"
             
             if self.verbose:
-                console.print(f"[yellow][VERBOSE] {platform}: Status {response.status_code}[/yellow]")
+                print(Fore.YELLOW + f"[VERBOSE] {platform}: Status {response.status_code}")
 
         except requests.exceptions.RequestException as e:
-            if self.verbose:
-                console.print(f"[red][VERBOSE] {platform}: Error - {str(e)}[/red]")
-            result["status"] = f"⚠️ Error ({str(e)})"
+            result["status"] = f"⚠ Error ({str(e)})"
             result["available"] = None
+            if self.verbose:
+                print(Fore.RED + f"[VERBOSE] {platform}: Error - {str(e)}")
 
         return result
 
-    def check_all_platforms(self, username: str) -> List[Dict[str, str]]:
+    def check_all_platforms(self, username):
         """Check username across all platforms using threading"""
         results = []
         
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             futures = []
             for platform in PLATFORMS:
                 futures.append(executor.submit(self.check_username, username, platform))
             
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                transient=True,
-            ) as progress:
-                task = progress.add_task(f"[cyan]Checking {username}...", total=len(futures))
+            with tqdm(total=len(futures), desc=f"Checking {username}", unit="site") as pbar:
                 for future in futures:
                     results.append(future.result())
-                    progress.update(task, advance=1)
+                    pbar.update(1)
         
         return results
 
 def display_banner():
     """Display the USRLINKS banner"""
-    console.print("\n")
-    f = Figlet(font='slant')
-    banner = f.renderText('USRLINKS')
-    console.print(f"[bright_green]{banner}[/bright_green]")
-    console.print("[bright_cyan]Social Media Username Availability Checker[/bright_cyan]")
-    console.print("[bright_white]https://github.com/yourusername/usrlinks[/bright_white]\n")
+    print("\n")
+    """Display the USRLINKS banner with bold blue styling"""
+    print(Fore.BLUE + Style.BRIGHT + r"""
+     ██╗   ██╗███████╗██████╗ ██╗     ██╗███╗   ██╗██╗  ██╗███████╗
+     ██║   ██║██╔════╝██╔══██╗██║     ██║████╗  ██║██║ ██╔╝██╔════╝
+     ██║   ██║███████╗██████╔╝██║     ██║██╔██╗ ██║█████╔╝ ███████╗
+     ██║   ██║╚════██║██╔══██╗██║     ██║██║╚██╗██║██╔═██╗ ╚════██║
+     ╚██████╔╝███████║██║  ██║███████╗██║██║ ╚████║██║  ██╗███████║
+      ╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
+    """ + Style.RESET_ALL)
+    print(Fore.BLUE + "Social Media Username Availability Checker\n")
 
-def validate_username(username: str) -> bool:
+def validate_username(username):
     """Validate the username format"""
     if not username:
         return False
@@ -179,25 +159,20 @@ def validate_username(username: str) -> bool:
     # Add more validation rules as needed
     return True
 
-def display_results(results: List[Dict[str, str]], username: str):
+def display_results(results, username):
     """Display results in a formatted table"""
-    table = Table(title=f"Results for [bold magenta]{username}[/bold magenta]", box=box.ROUNDED)
+    print(f"\nResults for {Fore.MAGENTA}{username}{Fore.RESET}:")
+    print(f"+------------+-----------+-------------------+")
+    print(f"| Platform   | Status    | Link              |")
+    print(f"+------------+-----------+-------------------+")
     
-    table.add_column("Platform", style="cyan", no_wrap=True)
-    table.add_column("Status", justify="center")
-    table.add_column("URL", style="blue")
-
     for result in sorted(results, key=lambda x: x['platform']):
-        status_style = "green" if result['available'] else "red" if result['available'] is False else "yellow"
-        table.add_row(
-            result['platform'],
-            f"[{status_style}]{result['status']}[/{status_style}]",
-            result['url']
-        )
+        status_color = Fore.GREEN if result['available'] else Fore.RED if result['available'] is False else Fore.YELLOW
+        print(f"| {result['platform'].ljust(10)} | {status_color}{result['status'].center(9)}{Fore.RESET} | {result['url'].ljust(17)} |")
+    
+    print(f"+------------+-----------+-------------------+")
 
-    console.print(table)
-
-def save_results(results: List[Dict[str, str]], username: str):
+def save_results(results, username):
     """Save results to a CSV file"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"usrlinks_results_{username}_{timestamp}.csv"
@@ -207,18 +182,18 @@ def save_results(results: List[Dict[str, str]], username: str):
             f.write("Platform,Status,URL\n")
             for result in results:
                 f.write(f"{result['platform']},{result['status']},{result['url']}\n")
-        console.print(f"[green]✓ Results saved to {filename}[/green]")
+        print(Fore.GREEN + f"✓ Results saved to {filename}")
     except Exception as e:
-        console.print(f"[red]Error saving results: {e}[/red]")
+        print(Fore.RED + f"Error saving results: {e}")
 
-def read_usernames_from_file(filename: str) -> List[str]:
+def read_usernames_from_file(filename):
     """Read usernames from a text file"""
     try:
         with open(filename, 'r') as f:
             usernames = [line.strip() for line in f.readlines() if line.strip()]
         return usernames
     except Exception as e:
-        console.print(f"[red]Error reading file: {e}[/red]")
+        print(Fore.RED + f"Error reading file: {e}")
         return []
 
 def main():
@@ -236,23 +211,23 @@ def main():
     if args.file:
         usernames = read_usernames_from_file(args.file)
         if not usernames:
-            console.print("[red]No valid usernames found in the file.[/red]")
+            print(Fore.RED + "No valid usernames found in the file.")
             return
     elif args.username:
         usernames = [args.username]
     else:
-        usernames = [console.input("[bold cyan]Enter a username to check: [/bold cyan]").strip()]
+        usernames = [input(Fore.CYAN + "Enter a username to check: " + Fore.RESET).strip()]
 
     for username in usernames:
         if not validate_username(username):
-            console.print(f"[red]Invalid username: {username}[/red]")
+            print(Fore.RED + f"Invalid username: {username}")
             continue
 
         results = checker.check_all_platforms(username)
         display_results(results, username)
 
         if len(usernames) == 1:  # Only ask to save if checking a single username
-            save_option = console.input("[bold cyan]Save results to file? (Y/N): [/bold cyan]").strip().lower()
+            save_option = input(Fore.CYAN + "Save results to file? (Y/N): " + Fore.RESET).strip().lower()
             if save_option == 'y':
                 save_results(results, username)
 
@@ -260,8 +235,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        console.print("\n[red]Operation cancelled by user.[/red]")
+        print("\n" + Fore.RED + "Operation cancelled by user.")
         sys.exit(0)
     except Exception as e:
-        console.print(f"[red]An error occurred: {e}[/red]")
+        print(Fore.RED + f"An error occurred: {e}")
         sys.exit(1)
