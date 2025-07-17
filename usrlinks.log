@@ -1,0 +1,121 @@
+2025-07-17 07:04:15,342 - USRLINKS - ERROR - Error checking Twitter: 400, message='Got more than 8190 bytes (8717) when reading Header value is too long.', url='https://twitter.com/stilla1ex'
+2025-07-17 07:04:15,358 - USRLINKS - ERROR - Error checking Dev.to: Connector is closed.
+2025-07-17 07:04:15,362 - USRLINKS - ERROR - Fatal error: <coroutine object USRLINKS.check_platform at 0x7f5d1219d930>
+2025-07-17 07:07:19,757 - USRLINKS - ERROR - Fatal error: <coroutine object USRLINKS.check_platform at 0x7f74f1861930>
+2025-07-17 07:22:08 - USRLINKS - ERROR - Fatal error: <coroutine object USRLINKS.check_platform at 0x7f81f5c97760>
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 546, in main
+    await scanner.run_scan()
+  File "/home/kali/usrlinks/usrlinks.py", line 307, in run_scan
+    progress.update(task, advance=1)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/rich/progress.py", line 1441, in update
+    task = self._tasks[task_id]
+           ~~~~~~~~~~~^^^^^^^^^
+KeyError: <coroutine object USRLINKS.check_platform at 0x7f81f5c97760>
+2025-07-17 07:29:47 - USRLINKS - ERROR - Failed to check GitHub: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:29:47 - USRLINKS - ERROR - Failed to check Facebook: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:29:48 - USRLINKS - ERROR - Failed to check Instagram: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:29:48 - USRLINKS - ERROR - Failed to check GitLab: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:29:49 - USRLINKS - ERROR - Failed to check Reddit: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:29:52 - USRLINKS - ERROR - Failed to check Twitter: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:29:52 - USRLINKS - ERROR - Fatal error: 'USRLINKS' object has no attribute '_analyze_security_risks'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 311, in main
+    await scanner.run_scan()
+  File "/home/kali/usrlinks/usrlinks.py", line 265, in run_scan
+    self._analyze_security_risks()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_analyze_security_risks'
+2025-07-17 07:38:14 - USRLINKS - ERROR - Failed to check GitHub: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:38:14 - USRLINKS - ERROR - Failed to check Facebook: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:38:15 - USRLINKS - ERROR - Failed to check GitLab: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:38:15 - USRLINKS - ERROR - Failed to check Reddit: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:38:15 - USRLINKS - ERROR - Failed to check Instagram: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:38:19 - USRLINKS - ERROR - Failed to check Twitter: 'USRLINKS' object has no attribute '_display_result'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 273, in _safe_check_platform
+    self._display_result(result)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_display_result'
+2025-07-17 07:38:19 - USRLINKS - ERROR - Fatal error: 'USRLINKS' object has no attribute '_analyze_security_risks'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 311, in main
+    await scanner.run_scan()
+  File "/home/kali/usrlinks/usrlinks.py", line 265, in run_scan
+    self._analyze_security_risks()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute '_analyze_security_risks'
+2025-07-17 08:04:50 - USRLINKS - ERROR - Fatal error: 'USRLINKS' object has no attribute 'generate_report'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 321, in main
+    scanner.generate_report(format=args.export if args.export else "console")
+    ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute 'generate_report'
+2025-07-17 08:05:19 - USRLINKS - ERROR - Fatal error: 'USRLINKS' object has no attribute 'generate_report'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 321, in main
+    scanner.generate_report(format=args.export if args.export else "console")
+    ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute 'generate_report'
+2025-07-17 08:05:56 - USRLINKS - ERROR - Fatal error: 'USRLINKS' object has no attribute 'generate_report'
+Traceback (most recent call last):
+  File "/home/kali/usrlinks/usrlinks.py", line 321, in main
+    scanner.generate_report(format=args.export if args.export else "console")
+    ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'USRLINKS' object has no attribute 'generate_report'
