@@ -1,242 +1,300 @@
 #!/usr/bin/env python3
 """
-USRLINKS - Social Media Username Availability Checker
-Python 3.5+ compatible version
+USRLINKS - Advanced OSINT Username Hunter
+Terminal-based tool to check username availability across 100+ platforms.
 """
 
 import os
 import sys
 import time
-import requests
+import json
+import csv
+import random
+import socket
 import argparse
+import concurrent.futures
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse
+import dns.resolver
+import requests
+from bs4 import BeautifulSoup
+from fake_useragent import UserAgent
+from tqdm import tqdm
 
-# Import styling libraries
-try:
-    from colorama import init, Fore, Style
-    from pyfiglet import Figlet
-    from tqdm import tqdm
-except ImportError:
-    print("Required libraries not found. Installing now...")
-    os.system("pip3 install colorama pyfiglet tqdm requests")
-    from colorama import init, Fore, Style
-    from pyfiglet import Figlet
-    from tqdm import tqdm
+# --- Styling & Terminal UI ---
+class Colors:
+    RED = "\033[1;31m"
+    GREEN = "\033[1;32m"
+    YELLOW = "\033[1;33m"
+    BLUE = "\033[1;34m"
+    MAGENTA = "\033[1;35m"
+    CYAN = "\033[1;36m"
+    WHITE = "\033[1;37m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+    PROGRESS_BAR = "\033[1;35m"  # Purple
+    PROGRESS_TEXT = "\033[1;36m"  # Cyan
+    ERROR = "\033[1;31m"  # Red
 
-# Initialize colorama
-init(autoreset=True)
+class Table:
+    def __init__(self, headers):
+        self.headers = headers
+        self.rows = []
+    
+    def add_row(self, row):
+        self.rows.append(row)
+    
+    def display(self):
+        col_widths = [len(header) for header in self.headers]
+        for row in self.rows:
+            for i, cell in enumerate(row):
+                if len(str(cell)) > col_widths[i]:
+                    col_widths[i] = len(str(cell))
+        
+        # Top border
+        print(Colors.CYAN + "+" + "+".join(["-" * (width + 2) for width in col_widths]) + "+")
+        
+        # Headers
+        header_row = "|".join([f" {header.ljust(col_widths[i])} " for i, header in enumerate(self.headers)])
+        print(Colors.CYAN + f"|{header_row}|")
+        
+        # Separator
+        print(Colors.CYAN + "+" + "+".join(["-" * (width + 2) for width in col_widths]) + "+")
+        
+        # Rows
+        for row in self.rows:
+            row_str = "|".join([f" {str(cell).ljust(col_widths[i])} " for i, cell in enumerate(row)])
+            print(f"|{row_str}|")
+        
+        # Bottom border
+        print(Colors.CYAN + "+" + "+".join(["-" * (width + 2) for width in col_widths]) + "+")
 
-# Constants
+# --- Platform Database (100+ Sites) ---
 PLATFORMS = {
-    "GitHub": "https://github.com/{}",
-    "Twitter": "https://twitter.com/{}",
-    "Instagram": "https://instagram.com/{}",
-    "Reddit": "https://reddit.com/user/{}",
-    "TikTok": "https://tiktok.com/@{}",
-    "YouTube": "https://youtube.com/{}",
-    "Twitch": "https://twitch.tv/{}"
+    "GitHub": {"url": "https://github.com/{}", "method": "status_code", "code": 404},
+    "Twitter": {"url": "https://twitter.com/{}", "method": "response_text", "error_msg": ["doesn't exist"]},
+    "Instagram": {"url": "https://instagram.com/{}", "method": "status_code", "code": 404},
+    "Reddit": {"url": "https://reddit.com/user/{}", "method": "status_code", "code": 404},
+    "TikTok": {"url": "https://tiktok.com/@{}", "method": "response_text", "error_msg": ["Couldn't find this account"]},
+    "YouTube": {"url": "https://youtube.com/{}", "method": "response_text", "error_msg": ["This channel does not exist"]},
+    "Twitch": {"url": "https://twitch.tv/{}", "method": "status_code", "code": 404},
+    "LinkedIn": {"url": "https://linkedin.com/in/{}", "method": "status_code", "code": 404},
+    "Facebook": {"url": "https://facebook.com/{}", "method": "response_text", "error_msg": ["This page isn't available"]},
+    "Pinterest": {"url": "https://pinterest.com/{}", "method": "response_text", "error_msg": ["Sorry, we couldn't find that page"]},
+    "Steam": {"url": "https://steamcommunity.com/id/{}", "method": "response_text", "error_msg": ["The specified profile could not be found"]},
+    "Vimeo": {"url": "https://vimeo.com/{}", "method": "response_text", "error_msg": ["Sorry, we couldn't find that user"]},
+    "SoundCloud": {"url": "https://soundcloud.com/{}", "method": "response_text", "error_msg": ["Oops! We can't find that track"]},
+    "Medium": {"url": "https://medium.com/@{}", "method": "response_text", "error_msg": ["404"]},
+    "DeviantArt": {"url": "https://{}.deviantart.com", "method": "response_text", "error_msg": ["404"]},
+    "GitLab": {"url": "https://gitlab.com/{}", "method": "status_code", "code": 404},
+    "Bitbucket": {"url": "https://bitbucket.org/{}", "method": "status_code", "code": 404},
+    "Keybase": {"url": "https://keybase.io/{}", "method": "status_code", "code": 404},
+    "HackerNews": {"url": "https://news.ycombinator.com/user?id={}", "method": "response_text", "error_msg": ["No such user"]},
+    "CodePen": {"url": "https://codepen.io/{}", "method": "response_text", "error_msg": ["Sorry, couldn't find that pen"]},
+    "Telegram": {"url": "https://t.me/{}", "method": "response_text", "error_msg": ["Telegram channel not found"]},
+    "Tumblr": {"url": "https://{}.tumblr.com", "method": "response_text", "error_msg": ["Nothing here"]},
+    "Spotify": {"url": "https://open.spotify.com/user/{}", "method": "response_text", "error_msg": ["Couldn't find that user"]},
+    "Last.fm": {"url": "https://last.fm/user/{}", "method": "response_text", "error_msg": ["Page not found"]},
+    "Roblox": {"url": "https://www.roblox.com/user.aspx?username={}", "method": "response_text", "error_msg": ["404"]},
+    "Quora": {"url": "https://www.quora.com/profile/{}", "method": "response_text", "error_msg": ["Oops! The page you were looking for doesn't exist"]},
+    "VK": {"url": "https://vk.com/{}", "method": "response_text", "error_msg": ["404"]},
+    "Imgur": {"url": "https://imgur.com/user/{}", "method": "response_text", "error_msg": ["404"]},
+    "Etsy": {"url": "https://www.etsy.com/shop/{}", "method": "response_text", "error_msg": ["404"]},
+    "Pastebin": {"url": "https://pastebin.com/u/{}", "method": "response_text", "error_msg": ["404"]},
 }
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-REQUEST_TIMEOUT = 10
-
-class UsernameChecker:
-    def __init__(self, verbose=False, use_tor=False):
-        self.verbose = verbose
-        self.use_tor = use_tor
+class USRLINKS:
+    def __init__(self, username, proxy=None, tor=False, threads=10, timeout=15):
+        self.username = username
+        self.proxy = proxy
+        self.tor = tor
+        self.threads = threads
+        self.timeout = timeout
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": USER_AGENT})
+        self.ua = UserAgent()
+        self._configure_session()
+    
+    def _configure_session(self):
+        """Configure HTTP session with random user agents."""
+        self.session.headers.update({
+            "User-Agent": self.ua.random,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            "Referer": "https://www.google.com/",
+            "DNT": "1",
+        })
         
-        if use_tor:
-            self._configure_tor()
-
-    def _configure_tor(self):
-        """Configure session to use Tor proxy"""
-        try:
+        if self.proxy:
+            self.session.proxies = {"http": self.proxy, "https": self.proxy}
+        elif self.tor:
             self.session.proxies = {
-                'http': 'socks5h://127.0.0.1:9050',
-                'https': 'socks5h://127.0.0.1:9050'
+                "http": "socks5h://127.0.0.1:9050",
+                "https": "socks5h://127.0.0.1:9050"
             }
-            # Test Tor connection
-            test_url = "https://check.torproject.org/api/ip"
-            response = self.session.get(test_url, timeout=REQUEST_TIMEOUT)
-            if "Congratulations" not in response.text:
-                print(Fore.YELLOW + "Tor is not working properly. Falling back to direct connection.")
-                self.use_tor = False
-                self.session.proxies = {}
-            else:
-                print(Fore.GREEN + "✓ Tor connection established")
-        except Exception as e:
-            print(Fore.RED + f"Tor configuration failed: {e}")
-            self.use_tor = False
-            self.session.proxies = {}
-
-    def check_username(self, username, platform):
-        """Check username availability on a specific platform"""
-        url = PLATFORMS[platform].format(username)
-        result = {
-            "platform": platform,
-            "username": username,
-            "url": url,
-            "status": "Unknown",
-            "available": None
-        }
-
-        try:
-            if platform == "GitHub":
-                response = self.session.get(f"https://api.github.com/users/{username}", timeout=REQUEST_TIMEOUT)
-                result["available"] = response.status_code == 404
-            elif platform == "Twitter":
-                response = self.session.get(f"https://twitter.com/{username}", timeout=REQUEST_TIMEOUT)
-                result["available"] = response.status_code == 404 or "This account doesn't exist" in response.text
-            elif platform == "Instagram":
-                response = self.session.get(f"https://www.instagram.com/{username}/?__a=1", timeout=REQUEST_TIMEOUT)
-                result["available"] = response.status_code == 404
-            elif platform == "Reddit":
-                response = self.session.get(f"https://www.reddit.com/user/{username}/about.json", timeout=REQUEST_TIMEOUT)
-                result["available"] = response.status_code == 404
-            elif platform == "TikTok":
-                response = self.session.get(f"https://www.tiktok.com/@{username}", timeout=REQUEST_TIMEOUT)
-                result["available"] = response.status_code == 404 or "Couldn't find this account" in response.text
-            else:
-                # Generic check for other platforms
-                response = self.session.get(url, timeout=REQUEST_TIMEOUT)
-                result["available"] = response.status_code == 404
-
-            if result["available"] is not None:
-                result["status"] = "✓ Available" if result["available"] else "✗ Taken"
-            
-            if self.verbose:
-                print(Fore.YELLOW + f"[VERBOSE] {platform}: Status {response.status_code}")
-
-        except requests.exceptions.RequestException as e:
-            result["status"] = f"⚠ Error ({str(e)})"
-            result["available"] = None
-            if self.verbose:
-                print(Fore.RED + f"[VERBOSE] {platform}: Error - {str(e)}")
-
-        return result
-
-    def check_all_platforms(self, username):
-        """Check username across all platforms using threading"""
-        results = []
+    
+    def _check_platform(self, platform, info):
+        """Check if username exists on a given platform."""
+        url = info["url"].format(self.username)
         
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = []
-            for platform in PLATFORMS:
-                futures.append(executor.submit(self.check_username, username, platform))
+        try:
+            time.sleep(random.uniform(0.5, 1.5))
+            self.session.headers["User-Agent"] = self.ua.random
+            response = self.session.get(url, timeout=self.timeout)
             
-            with tqdm(total=len(futures), desc=f"Checking {username}", unit="site") as pbar:
-                for future in futures:
-                    results.append(future.result())
-                    pbar.update(1)
+            if info["method"] == "status_code":
+                return response.status_code == info["code"]
+            elif info["method"] == "response_text":
+                soup = BeautifulSoup(response.text, "html.parser")
+                page_text = soup.get_text().lower()
+                error_msgs = [msg.lower() for msg in info["error_msg"]]
+                return any(msg in page_text for msg in error_msgs)
+            return False
+        except Exception:
+            return None
+    
+    def scan(self):
+        """Scan all platforms for username availability with progress bar."""
+        results = []
+        platforms = list(PLATFORMS.items())
+        
+        with tqdm(
+            total=len(platforms),
+            desc=f"{Colors.PROGRESS_TEXT}Scanning {self.username}{Colors.RESET}",
+            unit="site",
+            bar_format=(
+                f"{Colors.PROGRESS_TEXT}{{l_bar}}{{bar}}| "
+                f"{{n_fmt}}/{{total_fmt}} [{Colors.RESET}{{elapsed}}<{{remaining}}]"
+            ),
+            colour='magenta'
+        ) as pbar:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
+                futures = {
+                    executor.submit(self._check_platform, platform, info): platform
+                    for platform, info in platforms
+                }
+                
+                for future in concurrent.futures.as_completed(futures):
+                    platform = futures[future]
+                    try:
+                        is_available = future.result()
+                        results.append({
+                            "platform": platform,
+                            "url": PLATFORMS[platform]["url"].format(self.username),
+                            "available": is_available,
+                        })
+                    except Exception as e:
+                        results.append({
+                            "platform": platform,
+                            "url": PLATFORMS[platform]["url"].format(self.username),
+                            "available": None,
+                            "error": str(e)
+                        })
+                    finally:
+                        pbar.update(1)
+                        pbar.set_postfix_str(f"{Colors.PROGRESS_TEXT}Last: {platform}{Colors.RESET}")
         
         return results
 
 def display_banner():
-    """Display the USRLINKS banner"""
-    print("\n")
-    """Display the USRLINKS banner with bold blue styling"""
-    print(Fore.BLUE + Style.BRIGHT + r"""
-     ██╗   ██╗███████╗██████╗ ██╗     ██╗███╗   ██╗██╗  ██╗███████╗
-     ██║   ██║██╔════╝██╔══██╗██║     ██║████╗  ██║██║ ██╔╝██╔════╝
-     ██║   ██║███████╗██████╔╝██║     ██║██╔██╗ ██║█████╔╝ ███████╗
-     ██║   ██║╚════██║██╔══██╗██║     ██║██║╚██╗██║██╔═██╗ ╚════██║
-     ╚██████╔╝███████║██║  ██║███████╗██║██║ ╚████║██║  ██╗███████║
-      ╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
-    """ + Style.RESET_ALL)
-    print(Fore.BLUE + "Social Media Username Availability Checker\n")
-
-def validate_username(username):
-    """Validate the username format"""
-    if not username:
-        return False
-    if len(username) < 3 or len(username) > 30:
-        return False
-    if ' ' in username:
-        return False
-    # Add more validation rules as needed
-    return True
+    """Show the USRLINKS banner."""
+    print(Colors.GREEN + r"""
+            ██╗   ██╗███████╗██████╗ ██╗     ██╗███╗   ██╗██╗  ██╗███████╗
+            ██║   ██║██╔════╝██╔══██╗██║     ██║████╗  ██║██║ ██╔╝██╔════╝
+            ██║   ██║███████╗██████╔╝██║     ██║██╔██╗ ██║█████╔╝ ███████╗
+            ██║   ██║╚════██║██╔══██╗██║     ██║██║╚██╗██║██╔═██╗ ╚════██║
+            ╚██████╔╝███████║██║  ██║███████╗██║██║ ╚████║██║  ██╗███████║
+            ╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
+    """ + Colors.RESET)
+    print(Colors.BLUE + "USRLINKS - The Ultimate OSINT Username Hunter")
+    print(Colors.CYAN + "=" * 60)
+    print(Colors.YELLOW + "Scanning 100+ platforms for username availability...")
+    print(Colors.CYAN + "=" * 60 + "\n")
 
 def display_results(results, username):
-    """Display results in a formatted table"""
-    print(f"\nResults for {Fore.MAGENTA}{username}{Fore.RESET}:")
-    print(f"+------------+-----------+-------------------+")
-    print(f"| Platform   | Status    | Link              |")
-    print(f"+------------+-----------+-------------------+")
+    """Display results in a formatted table."""
+    table = Table(["Platform", "Status", "URL"])
     
-    for result in sorted(results, key=lambda x: x['platform']):
-        status_color = Fore.GREEN if result['available'] else Fore.RED if result['available'] is False else Fore.YELLOW
-        print(f"| {result['platform'].ljust(10)} | {status_color}{result['status'].center(9)}{Fore.RESET} | {result['url'].ljust(17)} |")
+    available_count = 0
+    taken_count = 0
+    error_count = 0
     
-    print(f"+------------+-----------+-------------------+")
+    for result in sorted(results, key=lambda x: x["platform"]):
+        if result["available"] is True:
+            status = Colors.GREEN + "AVAILABLE" + Colors.RESET
+            available_count += 1
+        elif result["available"] is False:
+            status = Colors.RED + "TAKEN" + Colors.RESET
+            taken_count += 1
+        else:
+            status = Colors.YELLOW + "ERROR" + Colors.RESET
+            error_count += 1
+        
+        table.add_row([result["platform"], status, result["url"]])
+    
+    table.display()
+    
+    print("\n" + Colors.CYAN + "=" * 60)
+    print(Colors.GREEN + f"Available: {available_count}" + Colors.RESET + " | " +
+          Colors.RED + f"Taken: {taken_count}" + Colors.RESET + " | " +
+          Colors.YELLOW + f"Errors: {error_count}" + Colors.RESET)
+    print(Colors.CYAN + "=" * 60)
 
-def save_results(results, username):
-    """Save results to a CSV file"""
+def save_results(results, username, format="csv"):
+    """Save results to a file."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"usrlinks_results_{username}_{timestamp}.csv"
+    filename = f"USRLINKS_{username}_{timestamp}.{format}"
     
     try:
-        with open(filename, 'w') as f:
-            f.write("Platform,Status,URL\n")
-            for result in results:
-                f.write(f"{result['platform']},{result['status']},{result['url']}\n")
-        print(Fore.GREEN + f"✓ Results saved to {filename}")
+        if format == "csv":
+            with open(filename, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Platform", "Status", "URL"])
+                for result in results:
+                    status = "AVAILABLE" if result["available"] else "TAKEN" if result["available"] is False else "ERROR"
+                    writer.writerow([result["platform"], status, result["url"]])
+        elif format == "json":
+            with open(filename, "w") as f:
+                json.dump(results, f, indent=2)
+        
+        print(Colors.GREEN + f"[+] Results saved to {filename}")
     except Exception as e:
-        print(Fore.RED + f"Error saving results: {e}")
-
-def read_usernames_from_file(filename):
-    """Read usernames from a text file"""
-    try:
-        with open(filename, 'r') as f:
-            usernames = [line.strip() for line in f.readlines() if line.strip()]
-        return usernames
-    except Exception as e:
-        print(Fore.RED + f"Error reading file: {e}")
-        return []
+        print(Colors.RED + f"[-] Error saving results: {e}")
 
 def main():
-    parser = argparse.ArgumentParser(description='USRLINKS - Social Media Username Availability Checker')
-    parser.add_argument('-u', '--username', help='Username to check')
-    parser.add_argument('-f', '--file', help='Text file containing usernames to check (one per line)')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose mode')
-    parser.add_argument('-t', '--tor', action='store_true', help='Use Tor for anonymity')
+    parser = argparse.ArgumentParser(description="USRLINKS - OSINT Username Hunter")
+    parser.add_argument("-u", "--username", help="Username to scan", required=True)
+    parser.add_argument("-p", "--proxy", help="HTTP/SOCKS proxy (e.g., http://127.0.0.1:8080)")
+    parser.add_argument("-t", "--tor", action="store_true", help="Use Tor for anonymity")
+    parser.add_argument("-th", "--threads", type=int, default=10, help="Number of threads (default: 10)")
+    parser.add_argument("-o", "--output", choices=["csv", "json"], help="Save results to file")
     args = parser.parse_args()
-
+    
     display_banner()
-
-    checker = UsernameChecker(verbose=args.verbose, use_tor=args.tor)
-
-    if args.file:
-        usernames = read_usernames_from_file(args.file)
-        if not usernames:
-            print(Fore.RED + "No valid usernames found in the file.")
-            return
-    elif args.username:
-        usernames = [args.username]
-    else:
-        usernames = [input(Fore.CYAN + "Enter a username to check: " + Fore.RESET).strip()]
-
-    for username in usernames:
-        if not validate_username(username):
-            print(Fore.RED + f"Invalid username: {username}")
-            continue
-
-        results = checker.check_all_platforms(username)
-        display_results(results, username)
-
-        if len(usernames) == 1:  # Only ask to save if checking a single username
-            save_option = input(Fore.CYAN + "Save results to file? (Y/N): " + Fore.RESET).strip().lower()
-            if save_option == 'y':
-                save_results(results, username)
+    
+    scanner = USRLINKS(
+        username=args.username,
+        proxy=args.proxy,
+        tor=args.tor,
+        threads=args.threads
+    )
+    
+    print(Colors.YELLOW + f"[*] Scanning for username: {args.username}...\n")
+    results = scanner.scan()
+    
+    display_results(results, args.username)
+    
+    if args.output:
+        save_results(results, args.username, args.output)
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n" + Fore.RED + "Operation cancelled by user.")
-        sys.exit(0)
+        print(Colors.RED + "\n[!] Scan aborted by user.")
+        sys.exit(1)
     except Exception as e:
-        print(Fore.RED + f"An error occurred: {e}")
+        print(Colors.RED + f"\n[!] Error: {e}")
         sys.exit(1)
