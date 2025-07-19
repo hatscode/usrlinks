@@ -3,9 +3,9 @@
 
 # USRLINKS - The Ultimate Username OSINT tool
 
-USRLINKS is a Python reconnaissance tool that checks username availability across multiple social media platforms. Designed for security professionals and penetration testers, it features a hacker-themed interface with bold blue styling. The tool supports single username checks or bulk scanning from files, with optional Tor anonymity and CSV report generation.
+USRLINKS is a Python reconnaissance tool that checks username availability across multiple social media platforms. Designed for security professionals and penetration testers. The tool supports single username checks or bulk scanning from files, with optional Tor anonymity and CSV report generation.
 
-Simply install with `pip install -r requirements.txt` and run `python usrlinks.py -u username` to scan platforms like GitHub, Twitter, Instagram, Reddit and more. USRLINKS provides clear visual feedback with colored status indicators (✓ Available/✗ Taken) and preserves results for further analysis. The lightweight tool requires only Python 3.5+ and common libraries like requests and colorama.
+Simply install with `pip install -r requirements.txt` and run `python usrlinks.py -u username` after cloning the tool scan platforms like GitHub, Twitter, Instagram, Reddit and more. USRLINKS provides clear visual feedback with colored status indicators (✓ Available/✗ Taken) and preserves results for further analysis. The lightweight tool requires only Python 3.5+ and common libraries like requests and colorama.
 
 
 Here's how to clone and use USRLINKS, formatted for your GitHub repository:
@@ -14,7 +14,7 @@ Here's how to clone and use USRLINKS, formatted for your GitHub repository:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/USRLINKS.git
+git clone https://github.com/stilla1ex/USRLINKS.git
 cd USRLINKS
 ```
 
