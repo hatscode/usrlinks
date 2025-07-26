@@ -25,7 +25,7 @@ try:
 except ImportError:
     FAKE_UA_AVAILABLE = False
 
-# --- Logging Setup ---
+# --- Logging Setup ----
 logging.basicConfig(
     filename="usrlinks.log",
     level=logging.INFO,
