@@ -19,6 +19,7 @@ from requests.adapters import HTTPAdapter, Retry
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
+# try exception block
 try:
     from fake_useragent import UserAgent
     FAKE_UA_AVAILABLE = True
