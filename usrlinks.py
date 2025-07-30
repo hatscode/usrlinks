@@ -20,12 +20,23 @@ from requests.adapters import HTTPAdapter, Retry
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
+# try exception block
 try:
     from fake_useragent import UserAgent
     FAKE_UA_AVAILABLE = True
 except ImportError:
     FAKE_UA_AVAILABLE = False
 
+<<<<<<< HEAD
+=======
+# --- Logging Setup ----
+logging.basicConfig(
+    filename="usrlinks.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
+>>>>>>> 045becf69a37b980d043a331cd3e258e289f22fe
 # --- Styling & Terminal UI ---
 class Colors:
     RED = "\033[1;31m"
@@ -655,4 +666,9 @@ if __name__ == "__main__":
         sys.exit(1)
     except Exception as e:
         print(Colors.RED + f"\n[!] Error: {e}")
+<<<<<<< HEAD
         sys.exit(1)
+=======
+        logging.error(f"Fatal error: {e}")
+        sys.exit(1)
+>>>>>>> 045becf69a37b980d043a331cd3e258e289f22fe
