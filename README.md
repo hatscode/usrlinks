@@ -50,28 +50,6 @@ python3 usrlinks.py -u john_doe --deep-scan -o csv
 python3 usrlinks.py -u john_doe --tor
 ```
 
-## Command Options
-
-```
--u, --username TEXT         Username to scan
--p, --proxy TEXT           HTTP/SOCKS proxy
--t, --tor                  Use Tor for anonymity
--th, --threads INTEGER     Number of threads (default: 10)
--o, --output [csv|json]    Save results to file
---platforms TEXT           Path to custom platforms JSON file
---list-platforms           List supported platforms
---deep-scan               Perform deep reconnaissance
---generate-dorks          Generate Google dorks
-```
-
-## Dependencies
-
-* Python 3.7+
-* requests
-* beautifulsoup4
-* fake-useragent
-* tqdm
-
 ## Supported Platforms
 
 GitHub, Twitter, Instagram, LinkedIn, TikTok, Facebook, Reddit, Telegram, Steam, Twitch, YouTube, Spotify, and 80+ more platforms.
@@ -83,11 +61,7 @@ python3 usrlinks.py --list-platforms
 
 ## Contributing
 
-Contributions are welcome. Fork the repository, make your changes, and submit a pull request.
-
-## License
-
-MIT License
+Contributions are welcome is far from being perfet. Fork the repository, make your changes, and submit a pull request.
 
 ## Disclaimer
 
