@@ -1,16 +1,21 @@
 <img width="1013" height="396" alt="image" src="https://github.com/user-attachments/assets/1eef4979-5b1d-43cf-8d23-5e7329296408" />
 
+# USRLINKS - The Ultimate OSINT Username Hunter
 
-# USRLINKS - The Ultimate Username OSINT tool
+USRLINKS is an advanced Python reconnaissance tool that checks username availability across 100+ social media platforms and performs deep OSINT intelligence gathering. Designed for security professionals, penetration testers, and OSINT investigators, this tool goes beyond simple username checking to extract valuable profile information, contact details, and generate comprehensive investigation reports.
 
-USRLINKS is a Python reconnaissance tool that checks username availability across multiple social media platforms. Designed for security professionals and penetration testers. The tool supports single username checks or bulk scanning from files, with optional Tor anonymity and CSV report generation.
+## ✨ Key Features
 
-Simply install with `pip install -r requirements.txt` and run `python usrlinks.py -u username` after cloning the tool scan platforms like GitHub, Twitter, Instagram, Reddit and more. USRLINKS provides clear visual feedback with colored status indicators (✓ Available/✗ Taken) and preserves results for further analysis. The lightweight tool requires only Python 3.5+ and common libraries like requests and colorama.
+- 🔍 **Username Scanning**: Check availability across 100+ platforms
+- 🕵️ **Deep Reconnaissance**: Extract emails, phone numbers, location data, and bio information
+- 🖼️ **Profile Image Analysis**: Download and hash profile images for comparison
+- 🔗 **Google Dorks Generation**: Auto-generate search queries for additional investigation
+- 🌐 **Tor & Proxy Support**: Anonymous scanning with Tor or custom proxies
+- 📊 **Professional Reports**: Export results to CSV/JSON with detailed intelligence data
+- 🎨 **Beautiful UI**: Unicode table borders with color-coded status indicators
+- ⚡ **Multi-threaded**: Fast concurrent scanning with progress tracking
 
-
-Here's how to clone and use USRLINKS, formatted for your GitHub repository:
-
-## 📥 Installation & Usage Guide
+## 📥 Installation & Setup
 
 ### 1. Clone the Repository
 ```bash
@@ -31,56 +36,8 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
-### 🚀 Basic Usage
-```bash
-python usrlinks.py -u username
-```
-
-### 🔍 Advanced Options
-```bash
-# Scan multiple usernames from file
-python usrlinks.py -f usernames.txt
-
-# Use Tor for anonymity
-python usrlinks.py -u username --tor
-
-# Save results to CSV
-python usrlinks.py -u username -o csv
-
-# Increase threads for faster scanning
-python usrlinks.py -u username --threads 20
-```
-
-### 📋 Full Command Options
-```bash
-python usrlinks.py --help
-```
-```
-USRLINKS - The Ultimate Username OSINT Tool
-
-Options:
-  -u, --username TEXT    Username to scan
-  -f, --file PATH        File containing usernames (one per line)
-  -t, --tor              Use Tor for anonymity
-  -o, --output [csv|json]  Save results to file
-  --threads INTEGER      Number of threads (default: 10)
-  --help                 Show this message and exit
-```
-
-### 🖼️ Example Output
-```
-Scanning username: alex
-+------------+-----------+-----------------------------+
-| Platform   | Status    | URL                         |
-+------------+-----------+-----------------------------+
-| GitHub     | ✓ Available | https://github.com/alex    |
-| Twitter    | ✗ Taken     | https://twitter.com/alex   |
-| Instagram  | ✗ Taken     | https://instagram.com/alex |
-+------------+-----------+-----------------------------+
-```
-
 ### 📦 Dependencies
-- Python 3.5+
+- Python 3.7+
 - requests
 - beautifulsoup4
 - fake-useragent
@@ -88,14 +45,228 @@ Scanning username: alex
 - dnspython
 - pysocks (for Tor support)
 
-### 🔧 Troubleshooting
-If you encounter SSL errors:
+## 🚀 Usage Guide
+
+### Basic Username Scan
 ```bash
-pip install --upgrade certifi
+python3 usrlinks.py -u john_doe
 ```
 
-For Tor connectivity issues:
+### Deep OSINT Reconnaissance
 ```bash
-sudo service tor start  # Linux
-brew services start tor # Mac
+python3 usrlinks.py -u john_doe --deep-scan
 ```
+
+### Generate Google Dorks
+```bash
+python3 usrlinks.py -u john_doe --generate-dorks
+```
+
+### Anonymous Scanning with Tor
+```bash
+python3 usrlinks.py -u john_doe --tor --deep-scan
+```
+
+### Export Results
+```bash
+python3 usrlinks.py -u john_doe --deep-scan -o csv
+python3 usrlinks.py -u john_doe --deep-scan -o json
+```
+
+### Custom Proxy Usage
+```bash
+python3 usrlinks.py -u john_doe -p http://127.0.0.1:8080
+```
+
+### High-Speed Scanning
+```bash
+python3 usrlinks.py -u john_doe --threads 20
+```
+
+## 📋 Complete Command Reference
+
+```bash
+python3 usrlinks.py --help
+```
+
+```
+USRLINKS - OSINT Username Hunter
+
+Options:
+  -u, --username TEXT         Username to scan
+  -p, --proxy TEXT           HTTP/SOCKS proxy (e.g., http://127.0.0.1:8080)
+  -t, --tor                  Use Tor for anonymity
+  -th, --threads INTEGER     Number of threads (default: 10)
+  -o, --output [csv|json]    Save results to file
+  --platforms TEXT           Path to custom platforms JSON file
+  --list-platforms           List supported platforms and exit
+  --deep-scan               Perform deep reconnaissance on found profiles
+  --generate-dorks          Generate Google dorks for the username
+  --help                    Show this message and exit
+```
+
+## 🖼️ Example Output
+
+### Basic Scan
+```
+╔══════════╦═════════════╦══════════════════════════════════╗
+║ Platform ║ Status      ║ URL                              ║
+╠══════════╬═════════════╬══════════════════════════════════╣
+║ GitHub   ║ AVAILABLE   ║ https://github.com/john_doe      ║
+║ Twitter  ║ TAKEN       ║ https://twitter.com/john_doe     ║
+║ LinkedIn ║ TAKEN       ║ https://linkedin.com/in/john_doe ║
+╚══════════╩═════════════╩══════════════════════════════════╝
+```
+
+### Deep Scan Results
+```
+=== RECONNAISSANCE SUMMARY ===
+📧 Email Addresses Found:
+  • john.doe@example.com
+  • contact@johndoe.dev
+
+📱 Phone Numbers Found:
+  • +1-555-123-4567
+
+🔗 Associated URLs:
+  • https://johndoe.dev
+  • https://blog.johndoe.com
+
+📍 Locations Found:
+  • San Francisco, CA
+  • New York, NY
+
+🖼️ Profile Images:
+  • GitHub: https://avatars.githubusercontent.com/u/12345
+    Hash: d41d8cd98f00b204e9800998ecf8427e
+```
+
+### Google Dorks Generation
+```
+=== GOOGLE DORKS FOR JOHN_DOE ===
+ 1. "john_doe"
+ 2. "john_doe" site:pastebin.com
+ 3. "john_doe" site:github.com
+ 4. "john_doe" "email" OR "contact"
+ 5. "john_doe" inurl:resume OR inurl:cv
+```
+
+## 🎯 Supported Platforms (100+)
+
+### Social Media & Communication
+- GitHub, Twitter/X, Instagram, LinkedIn, TikTok
+- Facebook, Reddit, Telegram, Discord, WhatsApp
+- Snapchat, Pinterest, Tumblr, VK
+
+### Professional & Development
+- GitLab, Bitbucket, CodePen, HackerNews
+- Stack Overflow, DeviantArt, Behance
+- Dribbble, 99designs, Freelancer
+
+### Gaming & Entertainment
+- Steam, Twitch, YouTube, Spotify
+- Xbox Live, PlayStation, Nintendo
+- Roblox, Minecraft, Epic Games
+
+### And 70+ more platforms...
+
+View all supported platforms:
+```bash
+python3 usrlinks.py --list-platforms
+```
+
+## 🔧 Advanced Configuration
+
+### Custom Platforms File
+Create a custom `platforms.json` file:
+```json
+{
+  "CustomSite": {
+    "url": "https://example.com/user/{}",
+    "method": "status_code",
+    "code": [404],
+    "recon_enabled": true
+  }
+}
+```
+
+Use with:
+```bash
+python3 usrlinks.py -u username --platforms platforms.json
+```
+
+## 🛡️ Privacy & Ethics
+
+- ✅ **Rate Limited**: Respects platform ToS and implements delays
+- ✅ **No Data Storage**: Doesn't store personal information permanently
+- ✅ **Ethical Use**: Designed for legitimate security research
+- ✅ **Tor Support**: Anonymous scanning capabilities
+
+**⚠️ Disclaimer**: This tool is for educational and authorized testing purposes only. Users are responsible for compliance with applicable laws and platform terms of service.
+
+## 🔧 Troubleshooting
+
+### SSL Certificate Errors
+```bash
+pip install --upgrade certifi requests
+```
+
+### Tor Connectivity Issues
+```bash
+# Linux
+sudo service tor start
+sudo systemctl enable tor
+
+# macOS
+brew services start tor
+
+# Windows
+# Download and install Tor Browser, then start it
+```
+
+### Permission Errors
+```bash
+chmod +x usrlinks.py
+```
+
+### Missing Dependencies
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt --force-reinstall
+```
+
+## 📊 Output Formats
+
+### CSV Export
+Includes columns: Platform, Status, URL, Emails, Phones, URLs, Location, Bio
+
+### JSON Export
+Complete structured data including reconnaissance information and metadata
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Thanks to all OSINT researchers and security professionals
+- Special thanks to the Python community for excellent libraries
+- Inspired by tools like Sherlock and Maigret
+
+## 📞 Support
+
+- 🐛 **Issues**: [GitHub Issues](https://github.com/stilla1ex/USRLINKS/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/stilla1ex/USRLINKS/discussions)
+- 📧 **Contact**: [Your Contact Information]
+
+---
+
+**Made with ❤️ for the OSINT community**

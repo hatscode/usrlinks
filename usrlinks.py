@@ -11,7 +11,8 @@ import json
 import csv
 import random
 import argparse
-import logging
+import re
+import hashlib
 from datetime import datetime
 from urllib.parse import urlparse
 import requests
@@ -24,13 +25,6 @@ try:
     FAKE_UA_AVAILABLE = True
 except ImportError:
     FAKE_UA_AVAILABLE = False
-
-# --- Logging Setup ---
-logging.basicConfig(
-    filename="usrlinks.log",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
 
 # --- Styling & Terminal UI ---
 class Colors:
@@ -52,45 +46,263 @@ class Table:
     def __init__(self, headers):
         self.headers = headers
         self.rows = []
+    
     def add_row(self, row):
         self.rows.append(row)
+    
     def display(self):
-        # Calculate column widths
         col_widths = [len(header) for header in self.headers]
         for row in self.rows:
             for i, cell in enumerate(row):
                 cell_str = str(cell)
                 if len(cell_str) > col_widths[i]:
                     col_widths[i] = len(cell_str)
-        # Print top border
+        
         print(Colors.CYAN + "╔" + "╦".join(["═" * (width + 2) for width in col_widths]) + "╗")
-        # Print header
         header_row = "║".join([f" {header.ljust(col_widths[i])} " for i, header in enumerate(self.headers)])
         print(Colors.CYAN + f"║{header_row}║")
-        # Print separator
         print(Colors.CYAN + "╠" + "╬".join(["═" * (width + 2) for width in col_widths]) + "╣")
-        # Print rows
+        
         for row in self.rows:
             row_str = "║".join([f" {str(cell).ljust(col_widths[i])} " for i, cell in enumerate(row)])
             print(f"║{row_str}║")
-        # Print bottom border
+        
         print(Colors.CYAN + "╚" + "╩".join(["═" * (width + 2) for width in col_widths]) + "╝")
+
+# --- Enhanced Reconnaissance Class ---
+class EnhancedRecon:
+    def __init__(self, session):
+        self.session = session
+        self.email_patterns = [
+            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+            r'\b[A-Za-z0-9._%+-]+\s*\[\s*at\s*\]\s*[A-Za-z0-9.-]+\s*\[\s*dot\s*\]\s*[A-Z|a-z]{2,}\b'
+        ]
+        self.phone_patterns = [
+            r'\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}',
+            r'\+?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,9}'
+        ]
+        self.url_patterns = [
+            r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?',
+            r'www\.(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?'
+        ]
+
+    def extract_contact_info(self, soup, url):
+        """Extract email addresses and phone numbers from profile pages"""
+        contact_info = {
+            'emails': [],
+            'phones': [],
+            'urls': [],
+            'location': None,
+            'bio': None
+        }
+        
+        text_content = soup.get_text()
+        
+        # Extract emails
+        for pattern in self.email_patterns:
+            emails = re.findall(pattern, text_content, re.IGNORECASE)
+            contact_info['emails'].extend(emails)
+        
+        # Extract phone numbers
+        for pattern in self.phone_patterns:
+            phones = re.findall(pattern, text_content)
+            contact_info['phones'].extend(phones)
+        
+        # Extract URLs
+        for pattern in self.url_patterns:
+            urls = re.findall(pattern, text_content)
+            contact_info['urls'].extend(urls)
+        
+        # Platform-specific extractions
+        contact_info.update(self._extract_platform_specific(soup, url))
+        
+        # Clean and deduplicate
+        contact_info['emails'] = list(set(contact_info['emails']))
+        contact_info['phones'] = list(set(contact_info['phones']))
+        contact_info['urls'] = list(set(contact_info['urls']))
+        
+        return contact_info
+
+    def _extract_platform_specific(self, soup, url):
+        """Extract platform-specific information"""
+        info = {'location': None, 'bio': None, 'name': None, 'verified': False}
+        
+        if 'github.com' in url:
+            info.update(self._extract_github_info(soup))
+        elif 'twitter.com' in url or 'x.com' in url:
+            info.update(self._extract_twitter_info(soup))
+        elif 'instagram.com' in url:
+            info.update(self._extract_instagram_info(soup))
+        elif 'linkedin.com' in url:
+            info.update(self._extract_linkedin_info(soup))
+        
+        return info
+
+    def _extract_github_info(self, soup):
+        """Extract GitHub-specific information"""
+        info = {}
+        
+        # Location
+        location_elem = soup.find('li', {'itemprop': 'homeLocation'})
+        if location_elem:
+            info['location'] = location_elem.get_text(strip=True)
+        
+        # Bio
+        bio_elem = soup.find('div', class_='user-profile-bio')
+        if bio_elem:
+            info['bio'] = bio_elem.get_text(strip=True)
+        
+        # Name
+        name_elem = soup.find('span', {'itemprop': 'name'})
+        if name_elem:
+            info['name'] = name_elem.get_text(strip=True)
+        
+        return info
+
+    def _extract_twitter_info(self, soup):
+        """Extract Twitter/X-specific information"""
+        info = {}
+        
+        # Bio
+        bio_elem = soup.find('div', {'data-testid': 'UserDescription'})
+        if bio_elem:
+            info['bio'] = bio_elem.get_text(strip=True)
+        
+        # Location
+        location_elem = soup.find('span', {'data-testid': 'UserLocation'})
+        if location_elem:
+            info['location'] = location_elem.get_text(strip=True)
+        
+        # Verified status
+        verified_elem = soup.find('svg', {'data-testid': 'verificationBadge'})
+        info['verified'] = verified_elem is not None
+        
+        return info
+
+    def _extract_instagram_info(self, soup):
+        """Extract Instagram-specific information"""
+        info = {}
+        
+        # Bio (Instagram stores bio in meta tags)
+        bio_meta = soup.find('meta', {'property': 'og:description'})
+        if bio_meta:
+            info['bio'] = bio_meta.get('content', '').strip()
+        
+        return info
+
+    def _extract_linkedin_info(self, soup):
+        """Extract LinkedIn-specific information"""
+        info = {}
+        
+        # Location
+        location_elem = soup.find('span', class_='text-body-small')
+        if location_elem and 'location' in location_elem.get_text().lower():
+            info['location'] = location_elem.get_text(strip=True)
+        
+        return info
+
+    def extract_profile_image(self, soup, url):
+        """Extract profile image URL and generate hash"""
+        profile_image_info = {
+            'url': None,
+            'hash': None,
+            'downloaded': False
+        }
+        
+        # Common profile image selectors
+        image_selectors = [
+            'img[data-testid="userAvatarImage"]',  # Twitter
+            '.avatar img',  # GitHub
+            'img[alt*="profile"]',  # Generic
+            'img[class*="avatar"]',  # Generic
+            'img[class*="profile"]',  # Generic
+        ]
+        
+        for selector in image_selectors:
+            img_elem = soup.select_one(selector)
+            if img_elem:
+                img_url = img_elem.get('src') or img_elem.get('data-src')
+                if img_url:
+                    if img_url.startswith('//'):
+                        img_url = 'https:' + img_url
+                    elif img_url.startswith('/'):
+                        domain = urlparse(url).netloc
+                        img_url = f"https://{domain}{img_url}"
+                    
+                    profile_image_info['url'] = img_url
+                    profile_image_info['hash'] = self._generate_image_hash(img_url)
+                    break
+        
+        return profile_image_info
+
+    def _generate_image_hash(self, img_url):
+        """Generate hash of profile image for comparison"""
+        try:
+            response = self.session.get(img_url, timeout=10)
+            if response.status_code == 200:
+                return hashlib.md5(response.content).hexdigest()
+        except Exception:
+            pass
+        return None
+
+    def generate_google_dorks(self, username):
+        """Generate Google search dorks for the username"""
+        dorks = [
+            f'"{username}"',
+            f'"{username}" site:pastebin.com',
+            f'"{username}" site:github.com',
+            f'"{username}" site:reddit.com',
+            f'"{username}" filetype:pdf',
+            f'"{username}" "email" OR "contact"',
+            f'"{username}" "phone" OR "mobile"',
+            f'"{username}" inurl:resume OR inurl:cv',
+            f'intitle:"{username}"',
+            f'"{username}" site:linkedin.com',
+        ]
+        return dorks
 
 def load_platforms(config_path=None):
     """Load platforms from JSON file or use built-in."""
     if config_path and os.path.isfile(config_path):
         with open(config_path, "r") as f:
             return json.load(f)
-    # Default platforms (can be moved to a separate file)
+    
+    # Enhanced platform configs with reconnaissance capabilities
     return {
-        "GitHub": {"url": "https://github.com/{}", "method": "status_code", "code": [404]},
-        "Twitter": {"url": "https://twitter.com/{}", "method": "response_text", "error_msg": ["doesn't exist", "404"]},
-        "Instagram": {"url": "https://instagram.com/{}", "method": "status_code", "code": [404]},
-        "Reddit": {"url": "https://reddit.com/user/{}", "method": "status_code", "code": [404]},
+        "GitHub": {
+            "url": "https://github.com/{}",
+            "method": "status_code",
+            "code": [404],
+            "recon_enabled": True,
+            "api_endpoint": "https://api.github.com/users/{}"
+        },
+        "Twitter": {
+            "url": "https://twitter.com/{}",
+            "method": "response_text",
+            "error_msg": ["doesn't exist", "404"],
+            "recon_enabled": True
+        },
+        "Instagram": {
+            "url": "https://instagram.com/{}",
+            "method": "status_code",
+            "code": [404],
+            "recon_enabled": True
+        },
+        "Reddit": {
+            "url": "https://reddit.com/user/{}",
+            "method": "status_code",
+            "code": [404],
+            "recon_enabled": True
+        },
+        "LinkedIn": {
+            "url": "https://linkedin.com/in/{}",
+            "method": "status_code",
+            "code": [404],
+            "recon_enabled": True
+        },
         "TikTok": {"url": "https://tiktok.com/@{}", "method": "response_text", "error_msg": ["Couldn't find this account"]},
         "YouTube": {"url": "https://youtube.com/{}", "method": "response_text", "error_msg": ["This channel does not exist"]},
         "Twitch": {"url": "https://twitch.tv/{}", "method": "status_code", "code": [404]},
-        "LinkedIn": {"url": "https://linkedin.com/in/{}", "method": "status_code", "code": [404]},
         "Facebook": {"url": "https://facebook.com/{}", "method": "response_text", "error_msg": ["This page isn't available"]},
         "Pinterest": {"url": "https://pinterest.com/{}", "method": "response_text", "error_msg": ["Sorry, we couldn't find that page"]},
         "Steam": {"url": "https://steamcommunity.com/id/{}", "method": "response_text", "error_msg": ["The specified profile could not be found"]},
@@ -151,64 +363,88 @@ def get_session_with_retries(proxy=None, tor=False):
         }
     return session
 
-def check_platform(session, username, platform, info, timeout=15):
+def check_platform(session, username, platform, info, timeout=15, deep_scan=False):
     url = info["url"].format(username)
+    result = {
+        "platform": platform,
+        "url": url,
+        "available": None,
+        "recon_data": {}
+    }
+    
     try:
         time.sleep(random.uniform(0.5, 1.5))
         session.headers["User-Agent"] = get_random_user_agent()
         response = session.get(url, timeout=timeout)
+        
+        # Check availability
         if info["method"] == "status_code":
-            return response.status_code in info["code"]
+            is_available = response.status_code in info["code"]
         elif info["method"] == "response_text":
             soup = BeautifulSoup(response.text, "html.parser")
             page_text = soup.get_text().lower()
             error_msgs = [msg.lower() for msg in info["error_msg"]]
-            return any(msg in page_text for msg in error_msgs)
-        return False
+            is_available = any(msg in page_text for msg in error_msgs)
+        else:
+            is_available = False
+        
+        result["available"] = is_available
+        
+        # Perform deep reconnaissance if account exists and deep_scan is enabled
+        if not is_available and deep_scan and info.get("recon_enabled", False):
+            soup = BeautifulSoup(response.text, "html.parser")
+            recon = EnhancedRecon(session)
+            
+            # Extract contact information
+            contact_info = recon.extract_contact_info(soup, url)
+            result["recon_data"]["contact_info"] = contact_info
+            
+            # Extract profile image info
+            image_info = recon.extract_profile_image(soup, url)
+            result["recon_data"]["profile_image"] = image_info
+        
+        return result
+        
     except Exception as e:
-        logging.error(f"Error checking {platform}: {e}")
-        return None
+        result["available"] = None
+        result["error"] = str(e)
+        return result
 
-def scan_usernames(username, platforms, proxy=None, tor=False, threads=10, timeout=15):
+def scan_usernames(username, platforms, proxy=None, tor=False, threads=10, timeout=15, deep_scan=False):
     session = get_session_with_retries(proxy, tor)
     results = []
     items = list(platforms.items())
+    
     with tqdm(
         total=len(items),
-        desc=f"{Colors.PROGRESS_TEXT}Scanning {username}{Colors.RESET}",
+        desc=f"Scanning {username}",
         unit="site",
-        bar_format=(
-            f"{Colors.PROGRESS_TEXT}{{l_bar}}{{bar}}| "
-            f"{{n_fmt}}/{{total_fmt}} [{Colors.RESET}{{elapsed}}<{{remaining}}]"
-        ),
+        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
         colour='magenta'
     ) as pbar:
         from concurrent.futures import ThreadPoolExecutor, as_completed
         with ThreadPoolExecutor(max_workers=threads) as executor:
             futures = {
-                executor.submit(check_platform, session, username, platform, info, timeout): platform
+                executor.submit(check_platform, session, username, platform, info, timeout, deep_scan): platform
                 for platform, info in items
             }
             for future in as_completed(futures):
                 platform = futures[future]
                 try:
-                    is_available = future.result()
-                    results.append({
-                        "platform": platform,
-                        "url": platforms[platform]["url"].format(username),
-                        "available": is_available,
-                    })
+                    result = future.result()
+                    results.append(result)
                 except Exception as e:
-                    logging.error(f"Exception in future for {platform}: {e}")
                     results.append({
                         "platform": platform,
                         "url": platforms[platform]["url"].format(username),
                         "available": None,
-                        "error": str(e)
+                        "error": str(e),
+                        "recon_data": {}
                     })
                 finally:
                     pbar.update(1)
-                    pbar.set_postfix_str(f"{Colors.PROGRESS_TEXT}Last: {platform}{Colors.RESET}")
+                    pbar.set_postfix_str(f"Last: {platform}")
+    
     return results
 
 def display_banner():
@@ -225,11 +461,12 @@ def display_banner():
     print(Colors.YELLOW + "Scanning 100+ platforms for username availability...")
     print(Colors.CYAN + "=" * 60 + "\n")
 
-def display_results(results, username):
+def display_results(results, username, deep_scan=False):
     table = Table(["Platform", "Status", "URL"])
     available_count = 0
     taken_count = 0
     error_count = 0
+    
     for result in sorted(results, key=lambda x: x["platform"]):
         if result["available"] is True:
             status = Colors.GREEN + "AVAILABLE" + Colors.RESET
@@ -241,13 +478,86 @@ def display_results(results, username):
             status = Colors.YELLOW + "ERROR" + Colors.RESET
             error_count += 1
         table.add_row([result["platform"], status, result["url"]])
+    
     table.display()
+    
+    # Display reconnaissance data if deep scan was performed
+    if deep_scan:
+        display_recon_summary(results)
+    
     # Summary row
-    print(Colors.CYAN + "─" * 60)
+    print("\n" + Colors.CYAN + "─" * 60)
     print(Colors.GREEN + f"Available: {available_count}" + Colors.RESET + " | " +
           Colors.RED + f"Taken: {taken_count}" + Colors.RESET + " | " +
           Colors.YELLOW + f"Errors: {error_count}" + Colors.RESET)
     print(Colors.CYAN + "─" * 60)
+
+def display_recon_summary(results):
+    """Display summary of reconnaissance data"""
+    print(f"\n{Colors.MAGENTA}=== RECONNAISSANCE SUMMARY ==={Colors.RESET}")
+    
+    all_emails = set()
+    all_phones = set()
+    all_urls = set()
+    all_locations = set()
+    profile_images = []
+    
+    for result in results:
+        if result["available"] is False and result.get("recon_data"):
+            recon = result["recon_data"]
+            contact = recon.get("contact_info", {})
+            
+            all_emails.update(contact.get("emails", []))
+            all_phones.update(contact.get("phones", []))
+            all_urls.update(contact.get("urls", []))
+            if contact.get("location"):
+                all_locations.add(contact["location"])
+            
+            img_info = recon.get("profile_image", {})
+            if img_info.get("url"):
+                profile_images.append({
+                    "platform": result["platform"],
+                    "url": img_info["url"],
+                    "hash": img_info.get("hash")
+                })
+    
+    # Display findings
+    if all_emails:
+        print(f"{Colors.CYAN}📧 Email Addresses Found:{Colors.RESET}")
+        for email in sorted(all_emails):
+            print(f"  • {email}")
+    
+    if all_phones:
+        print(f"\n{Colors.CYAN}📱 Phone Numbers Found:{Colors.RESET}")
+        for phone in sorted(all_phones):
+            print(f"  • {phone}")
+    
+    if all_urls:
+        print(f"\n{Colors.CYAN}🔗 Associated URLs:{Colors.RESET}")
+        for url in sorted(all_urls)[:10]:  # Limit to first 10
+            print(f"  • {url}")
+    
+    if all_locations:
+        print(f"\n{Colors.CYAN}📍 Locations Found:{Colors.RESET}")
+        for location in sorted(all_locations):
+            print(f"  • {location}")
+    
+    if profile_images:
+        print(f"\n{Colors.CYAN}🖼️  Profile Images:{Colors.RESET}")
+        for img in profile_images:
+            print(f"  • {img['platform']}: {img['url']}")
+            if img['hash']:
+                print(f"    Hash: {img['hash']}")
+
+def generate_dorks(username):
+    """Generate and display Google dorks for the username"""
+    recon = EnhancedRecon(None)
+    dorks = recon.generate_google_dorks(username)
+    
+    print(f"\n{Colors.MAGENTA}=== GOOGLE DORKS FOR {username.upper()} ==={Colors.RESET}")
+    for i, dork in enumerate(dorks, 1):
+        print(f"{Colors.YELLOW}{i:2d}.{Colors.RESET} {dork}")
+    print(f"\n{Colors.CYAN}Copy these dorks into Google for additional reconnaissance{Colors.RESET}\n")
 
 def save_results(results, username, format="csv"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -256,22 +566,35 @@ def save_results(results, username, format="csv"):
         if format == "csv":
             with open(filename, "w", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["Platform", "Status", "URL"])
+                writer.writerow(["Platform", "Status", "URL", "Emails", "Phones", "URLs", "Location", "Bio"])
                 for result in results:
                     status = "AVAILABLE" if result["available"] else "TAKEN" if result["available"] is False else "ERROR"
-                    writer.writerow([result["platform"], status, result["url"]])
+                    
+                    # Extract recon data
+                    recon = result.get("recon_data", {})
+                    contact = recon.get("contact_info", {})
+                    emails = "; ".join(contact.get("emails", []))
+                    phones = "; ".join(contact.get("phones", []))
+                    urls = "; ".join(contact.get("urls", []))
+                    location = contact.get("location", "")
+                    bio = contact.get("bio", "")
+                    
+                    writer.writerow([
+                        result["platform"], status, result["url"],
+                        emails, phones, urls, location, bio
+                    ])
         elif format == "json":
             with open(filename, "w") as f:
                 json.dump(results, f, indent=2)
         print(Colors.GREEN + f"[+] Results saved to {filename}")
     except Exception as e:
         print(Colors.RED + f"[-] Error saving results: {e}")
-        logging.error(f"Error saving results: {e}")
 
 def list_platforms(platforms):
     print(Colors.CYAN + "Supported platforms:")
     for name in sorted(platforms.keys()):
-        print(Colors.YELLOW + f"- {name}" + Colors.RESET)
+        recon_status = "✓" if platforms[name].get("recon_enabled") else "✗"
+        print(Colors.YELLOW + f"- {name} {Colors.CYAN}[Recon: {recon_status}]{Colors.RESET}")
 
 def main():
     parser = argparse.ArgumentParser(description="USRLINKS - OSINT Username Hunter")
@@ -282,24 +605,45 @@ def main():
     parser.add_argument("-o", "--output", choices=["csv", "json"], help="Save results to file")
     parser.add_argument("--platforms", help="Path to custom platforms JSON file")
     parser.add_argument("--list-platforms", action="store_true", help="List supported platforms and exit")
+    parser.add_argument("--deep-scan", action="store_true", help="Perform deep reconnaissance on found profiles")
+    parser.add_argument("--generate-dorks", action="store_true", help="Generate Google dorks for the username")
+    
     args = parser.parse_args()
     platforms = load_platforms(args.platforms)
+    
     if args.list_platforms:
         list_platforms(platforms)
         sys.exit(0)
+    
+    if args.generate_dorks:
+        if not args.username:
+            print(Colors.RED + "[-] Username required for dork generation")
+            sys.exit(1)
+        generate_dorks(args.username)
+        sys.exit(0)
+    
     if not args.username:
         parser.print_help()
         sys.exit(1)
+    
     display_banner()
+    
+    if args.deep_scan:
+        print(Colors.YELLOW + f"[*] Deep scanning enabled - extracting profile information...\n")
+    
     print(Colors.YELLOW + f"[*] Scanning for username: {args.username}...\n")
+    
     results = scan_usernames(
         username=args.username,
         platforms=platforms,
         proxy=args.proxy,
         tor=args.tor,
-        threads=args.threads
+        threads=args.threads,
+        deep_scan=args.deep_scan
     )
-    display_results(results, args.username)
+    
+    display_results(results, args.username, args.deep_scan)
+    
     if args.output:
         save_results(results, args.username, args.output)
 
@@ -311,5 +655,4 @@ if __name__ == "__main__":
         sys.exit(1)
     except Exception as e:
         print(Colors.RED + f"\n[!] Error: {e}")
-        logging.error(f"Fatal error: {e}")
         sys.exit(1)
