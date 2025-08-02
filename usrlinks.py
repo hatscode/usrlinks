@@ -629,7 +629,7 @@ def print_result_table(results):
         table_data.append([result["platform"], status, profile_url])
 
     headers = ["Platform", "Status", "Profile"]
-    print("\n" + Colors.CYAN + tabulate(table_data, headers=headers, tablefmt="grid") + Colors.RESET)
+    print("\n" + Colors.CYAN + tabulate(table_data, headers=headers, tablefmt="github") + Colors.RESET)
 
 def main():
     parser = argparse.ArgumentParser(description="USRLINKS - OSINT Username Hunter")
