@@ -61,7 +61,7 @@ python3 usrlinks.py --list-platforms
 
 ## Contributing
 
-Contributions are welcome is far from being perfet. Fork the repository, make your changes, and submit a pull request.
+Contributions are welcome coz the project is far from being perfet. Fork the repository, make your changes, and submit a pull request.
 
 ## Disclaimer
 
