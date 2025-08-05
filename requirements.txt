@@ -3,4 +3,4 @@ beautifulsoup4
 fake_useragent
 tqdm
 dnspython
-tabulate  #for summary tables
+tabulate  # used for summary tables
