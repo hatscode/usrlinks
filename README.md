@@ -1,11 +1,13 @@
-<img width="1013" height="396" alt="image" src="https://github.com/user-attachments/assets/1eef4979-5b1d-43cf-8d23-5e7329296408" />
+<img width="1023" height="614" alt="image" src="https://github.com/user-attachments/assets/d7d74273-e552-426b-a15d-7241193950e2" />
+
+
 
 
 # USRLINKS - Advanced OSINT Username Hunter
 
 USRLINKS is a comprehensive Python reconnaissance tool that checks username availability across 100+ social media platforms and performs deep OSINT intelligence gathering. Designed for security professionals, penetration testers, and OSINT investigators.
 
-## 🚀 Features
+## Features
 
 ### Core Functionality
 * **100+ Platform Coverage**: Scan username availability across major social networks, forums, and platforms
@@ -22,7 +24,7 @@ USRLINKS is a comprehensive Python reconnaissance tool that checks username avai
 * **User Agent Rotation**: Anti-detection measures with randomized headers
 * **Platform-Specific Detection**: Custom logic for accurate availability detection
 
-## 📦 Installation
+## Installation
 
 ```bash
 git clone https://github.com/stilla1ex/usrlinks.git
@@ -31,7 +33,7 @@ pip install -r requirements.txt
 chmod +x usrlinks.sh
 ```
 
-## 🎯 Quick Start
+## Quick Start
 
 ### Simple Launcher (Recommended)
 The easiest way to use USRLINKS with automatic HTML report generation:
@@ -69,28 +71,6 @@ python3 usrlinks.py -u john_doe --tor
 # Use custom proxy
 python3 usrlinks.py -u john_doe --proxy http://127.0.0.1:8080
 ```
-## 📊 Output Examples
-
-### Terminal Output
-```
-🚀 Starting USRLINKS Scanner...
-[*] Scanning username: john_doe
-[*] Running USRLINKS scan...
-
-[✓] GitHub: Available
-[✗] Twitter: Taken  
-[✓] Instagram: Available
-[✗] LinkedIn: Taken
-...
-
-=== RECONNAISSANCE SUMMARY ===
-📧 Email Addresses Found:
-  • john.doe@example.com
-📱 Phone Numbers Found:  
-  • +1-555-0123
-📍 Locations Found:
-  • San Francisco, CA
-```
 
 ### HTML Report Features
 - **Interactive Summary Cards**: Visual statistics of available/taken/error counts
@@ -99,7 +79,7 @@ python3 usrlinks.py -u john_doe --proxy http://127.0.0.1:8080
 - **Professional Styling**: Clean, modern interface with responsive design
 - **Export Ready**: Print-friendly layout for reporting
 
-## 🌐 Supported Platforms
+## Supported Platforms
 
 **Major Social Networks**: GitHub, Twitter, Instagram, LinkedIn, TikTok, Facebook, Reddit, YouTube, Twitch
 **Professional**: LinkedIn, GitHub, GitLab, Bitbucket, HackerNews, Medium
@@ -114,7 +94,7 @@ View complete list:
 ./usrlinks.sh --list-platforms
 ```
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Custom Platforms
 Create a custom `platforms.json` file to add new platforms:
@@ -138,7 +118,7 @@ python3 usrlinks.py -u username --threads 20
 python3 usrlinks.py -u username --timeout 30
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 usrlinks/
@@ -150,7 +130,7 @@ usrlinks/
 └── usrlinks.log        # Scan logs
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! The project is continuously evolving. Here's how you can help:
 
@@ -172,7 +152,7 @@ To add a new platform, modify the `load_platforms()` function in `usrlinks.py`:
 }
 ```
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 **IMPORTANT**: This tool is designed for:
 - **Educational purposes** and cybersecurity research
@@ -188,11 +168,11 @@ To add a new platform, modify the `load_platforms()` function in `usrlinks.py`:
 
 **The developers are not responsible for any misuse of this tool.**
 
-## 📜 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🔍 About OSINT
+## About OSINT
 
 Open Source Intelligence (OSINT) is the practice of collecting information from publicly available sources. USRLINKS facilitates legitimate OSINT activities by automating username reconnaissance across multiple platforms, helping security professionals identify digital footprints and potential security exposures.
 
