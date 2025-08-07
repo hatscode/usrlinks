@@ -356,6 +356,10 @@ func scanPlatform(username string, platformName string, platform Platform, clien
 		Platform: platformName,
 		URL:      url,
 	}
+	// Add this log for debugging
+	if logger != nil {
+		logger.Printf("Scanning %s: %s", platformName, url)
+	}
 	var resp *http.Response
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -549,27 +553,11 @@ func retryFailedPlatforms(results []ScanResult, username string, proxy string, t
 	return results
 }
 
-// --- 2. Progress Bar / Status Updates ---
-// Not implemented. For web, use WebSocket/SSE for live updates. Here, add a status endpoint.
 var scanStatus = struct {
 	sync.RWMutex
 	Status map[string]string
 }{Status: make(map[string]string)}
 
-// --- 1. Terminal UI & Styling ---
-// Not relevant for web backend.
-
-// --- 6. Listing supported platforms ---
-// Already implemented as /platforms endpoint.
-
-// --- 7. Deep Reconnaissance (all platforms) ---
-// Already implemented, but can be extended for more platforms.
-
-// --- 8. Google Dorks Generation ---
-// Already implemented.
-
-// --- 9. Thread/concurrency control ---
-// Goroutines used, but not strictly limited. For strict control, use a worker pool.
 func scanUsernamesWithPool(username string, proxy string, tor bool, threads int, deepScan bool, platforms map[string]Platform) []ScanResult {
 	client := getClient(proxy, tor)
 	type job struct{ name string }
@@ -599,12 +587,6 @@ func scanUsernamesWithPool(username string, proxy string, tor bool, threads int,
 	}
 	return results
 }
-
-// --- 12. Error handling/logging ---
-// Errors are returned in JSON and logged to file if logger is set.
-
-// --- 13. CLI arguments ---
-// Not relevant for web backend. Use HTTP query params.
 
 // --- Main Fiber endpoints ---
 func main() {
