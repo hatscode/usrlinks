@@ -20,6 +20,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"golang.org/x/net/proxy"
 )
 
@@ -610,6 +611,12 @@ func main() {
 	setupLogger()
 	app := fiber.New()
 
+	// Enable CORS for frontend requests
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept",
+	}))
+
 	// --- Progress status endpoint ---
 	app.Get("/status/:scanid", func(c *fiber.Ctx) error {
 		scanid := c.Params("scanid")
@@ -695,7 +702,16 @@ func main() {
 			c.Set("Content-Type", "text/csv")
 			return c.Send(b.Bytes())
 		}
-		return c.JSON(results)
+		// Defensive: catch JSON marshal errors
+		resp, err := json.Marshal(results)
+		if err != nil {
+			if logger != nil {
+				logger.Printf("JSON marshal error: %v", err)
+			}
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to encode results"})
+		}
+		c.Set("Content-Type", "application/json")
+		return c.Send(resp)
 	})
 
 	app.Get("/dorks/:username", func(c *fiber.Ctx) error {
