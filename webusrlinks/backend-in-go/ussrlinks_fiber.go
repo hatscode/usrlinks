@@ -725,7 +725,7 @@ func main() {
 	})
 
 	fmt.Println("USRLINKS Fiber backend running on :8080")
-	app.Listen(":8080")
+	app.Listen("0.0.0.0:8080")
 }
 
 // 1. Terminal UI & Styling
