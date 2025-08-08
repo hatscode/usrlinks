@@ -154,6 +154,14 @@ To add a new platform, modify the `load_platforms()` function in `usrlinks.py`:
 }
 ```
 
+## Contributors
+
+We appreciate all the contributors who have helped make USRLINKS better:
+
+- [@stilla1ex](https://github.com/stilla1ex) - Project creator and maintainer
+- [@max5010cs](https://github.com/max5010cs) - Contributor
+- [@Copilot](https://github.com/Copilot) - AI Assistant
+
 ## Disclaimer
 
 **IMPORTANT**: This tool is designed for:
