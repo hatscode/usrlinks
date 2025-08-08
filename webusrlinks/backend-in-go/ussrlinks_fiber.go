@@ -21,6 +21,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/joho/godotenv"
 	"golang.org/x/net/proxy"
 )
 
@@ -590,6 +591,8 @@ func scanUsernamesWithPool(username string, proxy string, tor bool, threads int,
 
 // --- Main Fiber endpoints ---
 func main() {
+	// Load .env file for local development
+	_ = godotenv.Load(".env")
 	setupLogger()
 	app := fiber.New()
 
@@ -718,11 +721,30 @@ func main() {
 		if req.Name == "" || req.Message == "" {
 			return c.Status(400).JSON(fiber.Map{"error": "Name and message required"})
 		}
+		// Save feedback to file
+		fb := Feedback{
+			Name:    req.Name,
+			Message: req.Message,
+			Time:    time.Now().Unix(),
+		}
+		if err := saveFeedbackToFile(fb); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to save feedback"})
+		}
+		// Send to Telegram as before
 		err := sendTelegramFeedback(req.Name, req.Message)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.JSON(fiber.Map{"status": "ok"})
+	})
+
+	// --- Feedbacks GET endpoint ---
+	app.Get("/feedbacks", func(c *fiber.Ctx) error {
+		feedbacks, err := loadFeedbacksFromFile()
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to load feedbacks"})
+		}
+		return c.JSON(feedbacks)
 	})
 
 	fmt.Println("USRLINKS Fiber backend running on :8080")
@@ -734,6 +756,9 @@ func sendTelegramFeedback(name, message string) error {
 	botToken := os.Getenv("TG_BOT_TOKEN")
 	chatID := os.Getenv("TG_BOT_CHAT_ID") // Numeric Telegram user ID
 	if botToken == "" || chatID == "" {
+		if logger != nil {
+			logger.Printf("Missing TG_BOT_TOKEN or TG_BOT_CHAT_ID")
+		}
 		return fmt.Errorf("telegram bot token or chat ID not set")
 	}
 	text := fmt.Sprintf("*Feedback from %s:*\n%s", name, message)
@@ -744,6 +769,9 @@ func sendTelegramFeedback(name, message string) error {
 		"parse_mode": "Markdown",
 	}
 	body, _ := json.Marshal(payload)
+	if logger != nil {
+		logger.Printf("Sending Telegram feedback: %s", string(body))
+	}
 	resp, err := http.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
 		if logger != nil {
@@ -752,15 +780,61 @@ func sendTelegramFeedback(name, message string) error {
 		return err
 	}
 	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
-		respBody, _ := io.ReadAll(resp.Body)
 		errMsg := fmt.Sprintf("telegram API error: %s - %s", resp.Status, string(respBody))
 		if logger != nil {
 			logger.Printf("Telegram API error: %s", errMsg)
 		}
 		return fmt.Errorf("%s", errMsg)
 	}
+	if logger != nil {
+		logger.Printf("Telegram API success: %s", string(respBody))
+	}
 	return nil
+}
+
+// Feedback struct for storage
+type Feedback struct {
+	Name    string `json:"name"`
+	Message string `json:"message"`
+	Time    int64  `json:"time"`
+}
+
+// Save feedback to file (append to feedbacks.json)
+func saveFeedbackToFile(fb Feedback) error {
+	const feedbackFile = "feedbacks.json"
+	var feedbacks []Feedback
+
+	// Read existing feedbacks
+	if data, err := os.ReadFile(feedbackFile); err == nil {
+		_ = json.Unmarshal(data, &feedbacks)
+	}
+	feedbacks = append([]Feedback{fb}, feedbacks...) // newest first
+
+	// Write back to file
+	data, err := json.MarshalIndent(feedbacks, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(feedbackFile, data, 0644)
+}
+
+// Read feedbacks from file
+func loadFeedbacksFromFile() ([]Feedback, error) {
+	const feedbackFile = "feedbacks.json"
+	var feedbacks []Feedback
+	data, err := os.ReadFile(feedbackFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []Feedback{}, nil
+		}
+		return nil, err
+	}
+	if err := json.Unmarshal(data, &feedbacks); err != nil {
+		return nil, err
+	}
+	return feedbacks, nil
 }
 
 // 1. Terminal UI & Styling
