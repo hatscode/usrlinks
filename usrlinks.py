@@ -2,6 +2,14 @@
 """
 USRLINKS - Advanced OSINT Username Hunter
 Terminal-based tool to check username availability across 100+ platforms.
+
+This is intentionally designed as a command-line tool for:
+- Maximum portability and security
+- Integration with existing OSINT workflows  
+- Use in penetration testing environments
+- Automation and batch processing
+
+Web-based interfaces are maintained separately on the 'web-ui' branch.
 """
 
 import os
@@ -19,6 +27,7 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+import logging
 
 # try exception block
 try:
@@ -27,16 +36,15 @@ try:
 except ImportError:
     FAKE_UA_AVAILABLE = False
 
-<<<<<<< HEAD
-=======
-# --- Logging Setup ----
+  # --- Logging Setup ----
 logging.basicConfig(
     filename="usrlinks.log",
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
->>>>>>> 045becf69a37b980d043a331cd3e258e289f22fe
+
+
 # --- Styling & Terminal UI ---
 class Colors:
     RED = "\033[1;31m"
@@ -382,8 +390,10 @@ def check_platform(session, username, platform, info, timeout=15, deep_scan=Fals
         "available": None,
         "recon_data": {}
     }
-    
+    from tqdm import tqdm  # tqdm is imported
+
     try:
+        tqdm.write(f"[•] Checking {platform} ({url})")
         time.sleep(random.uniform(0.5, 1.5))
         session.headers["User-Agent"] = get_random_user_agent()
         response = session.get(url, timeout=timeout)
@@ -400,6 +410,11 @@ def check_platform(session, username, platform, info, timeout=15, deep_scan=Fals
             is_available = False
         
         result["available"] = is_available
+        
+        if is_available:
+            tqdm.write(f"[✓] {platform}: Available")
+        else:
+            tqdm.write(f"[✗] {platform}: Taken")
         
         # Perform deep reconnaissance if account exists and deep_scan is enabled
         if not is_available and deep_scan and info.get("recon_enabled", False):
@@ -419,6 +434,7 @@ def check_platform(session, username, platform, info, timeout=15, deep_scan=Fals
     except Exception as e:
         result["available"] = None
         result["error"] = str(e)
+        tqdm.write(f"[!] {platform}: Error — {str(e)}")
         return result
 
 def scan_usernames(username, platforms, proxy=None, tor=False, threads=10, timeout=15, deep_scan=False):
@@ -607,6 +623,22 @@ def list_platforms(platforms):
         recon_status = "✓" if platforms[name].get("recon_enabled") else "✗"
         print(Colors.YELLOW + f"- {name} {Colors.CYAN}[Recon: {recon_status}]{Colors.RESET}")
 
+def print_result_table(results):
+    from tabulate import tabulate  # move to top if u wanto
+
+    table_data = []
+    for result in results:
+        status = (
+            "AVAILABLE" if result["available"] is True
+            else "TAKEN" if result["available"] is False
+            else "ERROR"
+        )
+        profile_url = result["url"] if result["available"] is False else "-"
+        table_data.append([result["platform"], status, profile_url])
+
+    headers = ["Platform", "Status", "Profile"]
+    print("\n" + Colors.CYAN + tabulate(table_data, headers=headers, tablefmt="github") + Colors.RESET)
+
 def main():
     parser = argparse.ArgumentParser(description="USRLINKS - OSINT Username Hunter")
     parser.add_argument("-u", "--username", help="Username to scan")
@@ -653,6 +685,39 @@ def main():
         deep_scan=args.deep_scan
     )
     
+    print_result_table(results)  # show initial results table
+
+    # retry failed platforms 2 times again
+    failed_results = [r for r in results if r["available"] is None]
+    session = get_session_with_retries(args.proxy, args.tor)
+    if failed_results:
+        from tqdm import tqdm
+        for attempt in range(2):
+            tqdm.write(f"\n[⏳] Retrying failed platforms (Attempt {attempt + 1}/2)")
+            retry_results = []
+            for fr in failed_results:
+                tqdm.write(f"[•] Retrying {fr['platform']}...")
+                retry_result = check_platform(session, args.username, fr['platform'], platforms[fr['platform']], timeout=15)
+                retry_results.append(retry_result)
+
+                if retry_result["available"] is True:
+                    tqdm.write(f"[✓] {fr['platform']}: Available")
+                elif retry_result["available"] is False:
+                    tqdm.write(f"[✗] {fr['platform']}: Taken")
+                else:
+                    tqdm.write(f"[!] {fr['platform']}: Still error")
+
+            print_result_table(retry_results)
+            failed_results = [r for r in retry_results if r["available"] is None]
+
+            if not failed_results:
+                tqdm.write("[✓] All platforms resolved after retries.")
+                break
+
+        if failed_results:
+            failed_names = [r["platform"] for r in failed_results]
+            tqdm.write(f"[*] Still failing after 2 retries: {failed_names}")
+
     display_results(results, args.username, args.deep_scan)
     
     if args.output:
@@ -666,9 +731,10 @@ if __name__ == "__main__":
         sys.exit(1)
     except Exception as e:
         print(Colors.RED + f"\n[!] Error: {e}")
-<<<<<<< HEAD
         sys.exit(1)
-=======
         logging.error(f"Fatal error: {e}")
         sys.exit(1)
->>>>>>> 045becf69a37b980d043a331cd3e258e289f22fe
+
+
+
+
