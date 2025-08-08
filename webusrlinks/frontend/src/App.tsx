@@ -152,6 +152,8 @@ const App: React.FC = () => {
     defaultPlatforms.map(p => ({ ...p, enabled: true, custom: false }))
   );
   const [platformsBarOpen, setPlatformsBarOpen] = useState(false);
+  const [feedbacksOpen, setFeedbacksOpen] = useState(false);
+  const [feedbacks, setFeedbacks] = useState<{ name: string; message: string; time?: number }[]>([]);
 
   // Fetch supported platforms
   const fetchPlatforms = async () => {
@@ -163,6 +165,22 @@ const App: React.FC = () => {
       setSnackbar({ open: true, message: "Failed to fetch platforms", severity: "error" });
     }
   };
+
+  // Fetch feedbacks from backend
+  const fetchFeedbacks = () => {
+    fetch(`${TG_BOT_API}/feedbacks`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setFeedbacks(data);
+      })
+      .catch(() => setFeedbacks([]));
+  };
+
+  useEffect(() => {
+    if (feedbacksOpen) {
+      fetchFeedbacks();
+    }
+  }, [feedbacksOpen]);
 
   // add mre platforms, multipe allowed
   const handleAddCustomPlatform = () => {
@@ -382,6 +400,7 @@ const App: React.FC = () => {
     setAskNameOpen(true);
   };
 
+  // After sending feedback, refresh feedbacks
   const handleSendWithName = async () => {
     setAskNameOpen(false);
     setFeedbackSent(true);
@@ -395,6 +414,7 @@ const App: React.FC = () => {
         setSnackbar({ open: true, message: "Failed to send feedback.", severity: "error" });
       } else {
         setSnackbar({ open: true, message: "Feedback sent!", severity: "success" });
+        fetchFeedbacks(); // Refresh feedbacks after sending
       }
       setFeedback("");
       setFeedbackName("");
@@ -739,6 +759,49 @@ const App: React.FC = () => {
                 {feedbackSent ? "Sent!" : "Send"}
               </Button>
             </Box>
+          </Box>
+          {/* Feedbacks from users bar (moved here) */}
+          <Box sx={{ width: "100%", mb: 2 }}>
+            <Paper
+              sx={{
+                bgcolor: "#101c2c",
+                color: "#b0c4de",
+                borderRadius: 2,
+                p: 2,
+                mb: 2,
+                cursor: "pointer",
+                boxShadow: 2
+              }}
+              onClick={() => setFeedbacksOpen(v => !v)}
+            >
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Typography sx={{ fontWeight: 700, color: "#00bfff", flex: 1 }}>
+                  Feedbacks from users
+                </Typography>
+                <IconButton size="small" sx={{ color: "#00bfff" }}>
+                  {feedbacksOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </IconButton>
+              </Box>
+              {feedbacksOpen && (
+                <Box sx={{ mt: 2 }}>
+                  {feedbacks.length === 0 ? (
+                    <Typography color="#b0c4de">No feedbacks yet.</Typography>
+                  ) : (
+                    feedbacks.map((fb, idx) => (
+                      <Paper key={idx} sx={{ p: 2, mb: 1, bgcolor: "#16233a" }}>
+                        <Typography sx={{ fontWeight: 700, color: "#00bfff" }}>{fb.name}</Typography>
+                        <Typography sx={{ color: "#b0c4de" }}>{fb.message}</Typography>
+                        {fb.time && (
+                          <Typography variant="caption" sx={{ color: "#888" }}>
+                            {new Date(fb.time * 1000).toLocaleString()}
+                          </Typography>
+                        )}
+                      </Paper>
+                    ))
+                  )}
+                </Box>
+              )}
+            </Paper>
           </Box>
         </motion.div>
 
