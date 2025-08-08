@@ -18,6 +18,8 @@ import (
 	"sync"
 	"time"
 
+	"encoding/base64"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -747,6 +749,83 @@ func main() {
 		return c.JSON(feedbacks)
 	})
 
+	// --- Respond to feedback (append reply) ---
+	app.Post("/feedback/respond", func(c *fiber.Ctx) error {
+		var req struct {
+			Index   int    `json:"index"`
+			Name    string `json:"name"`
+			Message string `json:"message"`
+		}
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+		}
+		if req.Name == "" || req.Message == "" {
+			return c.Status(400).JSON(fiber.Map{"error": "Name and message required"})
+		}
+		err := updateFeedback(req.Index, func(fb *Feedback) {
+			fb.Replies = append(fb.Replies, FeedbackReply{
+				Name:    req.Name,
+				Message: req.Message,
+				Time:    time.Now().Unix(),
+			})
+		})
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"status": "ok"})
+	})
+
+	// --- Like/dislike feedback ---
+	app.Post("/feedback/like", func(c *fiber.Ctx) error {
+		var req struct {
+			Index int  `json:"index"`
+			Like  bool `json:"like"`
+		}
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+		}
+
+		const cookieName = "usrlinks_feedback_votes"
+		voteMap := map[string]string{}
+		if cookieVal := c.Cookies(cookieName); cookieVal != "" {
+			decoded, _ := base64.StdEncoding.DecodeString(cookieVal)
+			_ = json.Unmarshal(decoded, &voteMap)
+		}
+		key := fmt.Sprintf("%d", req.Index)
+		if prev, exists := voteMap[key]; exists {
+			// Always return the current vote status and do not increment
+			return c.Status(200).JSON(fiber.Map{
+				"status": "already_voted",
+				"vote":   prev,
+			})
+		}
+
+		// Update feedback
+		err := updateFeedback(req.Index, func(fb *Feedback) {
+			if req.Like {
+				fb.Likes++
+				voteMap[key] = "like"
+			} else {
+				fb.Dislikes++
+				voteMap[key] = "dislike"
+			}
+		})
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		encoded, _ := json.Marshal(voteMap)
+		c.Cookie(&fiber.Cookie{
+			Name:     cookieName,
+			Value:    base64.StdEncoding.EncodeToString(encoded),
+			Path:     "/",
+			HTTPOnly: true,
+			MaxAge:   60 * 60 * 24 * 365,
+		})
+
+		return c.JSON(fiber.Map{"status": "ok", "vote": voteMap[key]})
+	})
+
 	fmt.Println("USRLINKS Fiber backend running on :8080")
 	app.Listen("0.0.0.0:8080")
 }
@@ -794,24 +873,32 @@ func sendTelegramFeedback(name, message string) error {
 	return nil
 }
 
-// Feedback struct for storage
-type Feedback struct {
+type FeedbackReply struct {
 	Name    string `json:"name"`
 	Message string `json:"message"`
 	Time    int64  `json:"time"`
 }
 
+type Feedback struct {
+	Name     string          `json:"name"`
+	Message  string          `json:"message"`
+	Time     int64           `json:"time"`
+	Replies  []FeedbackReply `json:"replies,omitempty"`
+	Likes    int             `json:"likes,omitempty"`
+	Dislikes int             `json:"dislikes,omitempty"`
+}
+
+// Use a single feedback file for both save/load
+const feedbackFile = "feedbacks.json"
+
 // Save feedback to file (append to feedbacks.json)
 func saveFeedbackToFile(fb Feedback) error {
-	const feedbackFile = "/tmp/feedbacks.json"
 	var feedbacks []Feedback
-
 	// Read existing feedbacks
 	if data, err := os.ReadFile(feedbackFile); err == nil {
 		_ = json.Unmarshal(data, &feedbacks)
 	}
 	feedbacks = append([]Feedback{fb}, feedbacks...) // newest first
-
 	// Write back to file
 	data, err := json.MarshalIndent(feedbacks, "", "  ")
 	if err != nil {
@@ -822,7 +909,6 @@ func saveFeedbackToFile(fb Feedback) error {
 
 // Read feedbacks from file
 func loadFeedbacksFromFile() ([]Feedback, error) {
-	const feedbackFile = "feedbacks.json"
 	var feedbacks []Feedback
 	data, err := os.ReadFile(feedbackFile)
 	if err != nil {
@@ -835,6 +921,23 @@ func loadFeedbacksFromFile() ([]Feedback, error) {
 		return nil, err
 	}
 	return feedbacks, nil
+}
+
+// Update feedback (by index) for response/like/dislike
+func updateFeedback(index int, updateFn func(*Feedback)) error {
+	feedbacks, err := loadFeedbacksFromFile()
+	if err != nil {
+		return err
+	}
+	if index < 0 || index >= len(feedbacks) {
+		return fmt.Errorf("invalid feedback index")
+	}
+	updateFn(&feedbacks[index])
+	data, err := json.MarshalIndent(feedbacks, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(feedbackFile, data, 0644)
 }
 
 // 1. Terminal UI & Styling

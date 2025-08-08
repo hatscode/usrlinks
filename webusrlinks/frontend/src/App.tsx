@@ -118,6 +118,22 @@ const AnimatedRadar = () => (
   </motion.span>
 );
 
+// Define types for feedback and replies
+type FeedbackReply = {
+  name: string;
+  message: string;
+  time?: number;
+};
+
+type Feedback = {
+  name: string;
+  message: string;
+  time?: number;
+  replies?: FeedbackReply[];
+  likes?: number;
+  dislikes?: number;
+};
+
 const App: React.FC = () => {
   const [username, setUsername] = useState("");
   const [proxy, setProxy] = useState("");
@@ -153,7 +169,13 @@ const App: React.FC = () => {
   );
   const [platformsBarOpen, setPlatformsBarOpen] = useState(false);
   const [feedbacksOpen, setFeedbacksOpen] = useState(false);
-  const [feedbacks, setFeedbacks] = useState<{ name: string; message: string; time?: number }[]>([]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [expandedReplies, setExpandedReplies] = useState<{ [idx: number]: boolean }>({});
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replyIdx, setReplyIdx] = useState<number | null>(null);
+  const [replyName, setReplyName] = useState(""); // NEW
+  const [voteMap, setVoteMap] = useState<Record<string, string>>({});
 
   // Fetch supported platforms
   const fetchPlatforms = async () => {
@@ -422,6 +444,81 @@ const App: React.FC = () => {
       setSnackbar({ open: true, message: "Failed to send feedback.", severity: "error" });
     }
     setTimeout(() => setFeedbackSent(false), 3000);
+  };
+
+  // Add this utility to read the vote cookie (robust, always up-to-date)
+  function getVoteMap(): Record<string, string> {
+    try {
+      const cookie = document.cookie
+        .split("; ")
+        .find(row => row.startsWith("usrlinks_feedback_votes="));
+      if (!cookie) return {};
+      const val = decodeURIComponent(cookie.split("=")[1]);
+      const decoded = atob(val);
+      return JSON.parse(decoded);
+    } catch {
+      return {};
+    }
+  }
+
+  // Like/dislike feedback
+  const handleLikeDislike = async (idx: number, like: boolean) => {
+    // Prevent multiple votes in UI
+    if (voteMap[String(idx)]) {
+      setSnackbar({ open: true, message: "You already voted.", severity: "info" });
+      return;
+    }
+    try {
+      const res = await fetch(`${TG_BOT_API}/feedback/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index: idx, like })
+      });
+      const data = await res.json();
+      // Always update voteMap after voting
+      setVoteMap(getVoteMap());
+      if (data.status === "already_voted") {
+        setSnackbar({ open: true, message: "You already voted.", severity: "info" });
+      } else if (data.status === "ok") {
+        setSnackbar({ open: true, message: "Vote counted!", severity: "success" });
+      }
+      fetchFeedbacks();
+    } catch {
+      setSnackbar({ open: true, message: "Failed to update feedback.", severity: "error" });
+    }
+  };
+
+  // Reply to feedback (open dialog)
+  const handleReply = (idx: number) => {
+    setReplyIdx(idx);
+    setReplyText("");
+    setReplyName("");
+    setReplyDialogOpen(true);
+  };
+
+  // Send reply (with name)
+  const handleSendReply = async () => {
+    if (replyIdx === null) return;
+    try {
+      await fetch(`${TG_BOT_API}/feedback/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index: replyIdx, name: replyName, message: replyText })
+      });
+      setSnackbar({ open: true, message: "Response sent!", severity: "success" });
+      setReplyDialogOpen(false);
+      fetchFeedbacks();
+    } catch {
+      setSnackbar({ open: true, message: "Failed to send response.", severity: "error" });
+    }
+  };
+
+  // Toggle reply expansion for a feedback
+  const handleToggleReplyExpand = (idx: number) => {
+    setExpandedReplies(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }));
   };
 
   // Animation variants for entrance
@@ -787,17 +884,70 @@ const App: React.FC = () => {
                   {feedbacks.length === 0 ? (
                     <Typography color="#b0c4de">No feedbacks yet.</Typography>
                   ) : (
-                    feedbacks.map((fb, idx) => (
-                      <Paper key={idx} sx={{ p: 2, mb: 1, bgcolor: "#16233a" }}>
-                        <Typography sx={{ fontWeight: 700, color: "#00bfff" }}>{fb.name}</Typography>
-                        <Typography sx={{ color: "#b0c4de" }}>{fb.message}</Typography>
-                        {fb.time && (
-                          <Typography variant="caption" sx={{ color: "#888" }}>
-                            {new Date(fb.time * 1000).toLocaleString()}
-                          </Typography>
-                        )}
-                      </Paper>
-                    ))
+                    feedbacks.map((fb, idx) => {
+                      const voted = voteMap[String(idx)];
+                      return (
+                        <Paper key={idx} sx={{ p: 2, mb: 1, bgcolor: "#16233a" }}>
+                          <Typography sx={{ fontWeight: 700, color: "#00bfff" }}>{fb.name}</Typography>
+                          <Typography sx={{ color: "#b0c4de" }}>{fb.message}</Typography>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              sx={{ color: "#00bfff", borderColor: "#00bfff", minWidth: 32 }}
+                              onClick={e => { e.stopPropagation(); handleLikeDislike(idx, true); }}
+                              disabled={!!voted}
+                            >
+                              👍 {fb.likes || 0}
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              sx={{ color: "#ff5555", borderColor: "#ff5555", minWidth: 32 }}
+                              onClick={e => { e.stopPropagation(); handleLikeDislike(idx, false); }}
+                              disabled={!!voted}
+                            >
+                              👎 {fb.dislikes || 0}
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              sx={{ color: "#00ff99", borderColor: "#00ff99", minWidth: 32 }}
+                              onClick={e => { e.stopPropagation(); handleReply(idx); }}
+                            >
+                              Reply
+                            </Button>
+                            <IconButton
+                              size="small"
+                              sx={{ color: "#00ff99" }}
+                              onClick={e => { e.stopPropagation(); handleToggleReplyExpand(idx); }}
+                            >
+                              {expandedReplies[idx] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            </IconButton>
+                            {fb.time && (
+                              <Typography variant="caption" sx={{ color: "#888", ml: 2 }}>
+                                {new Date(fb.time * 1000).toLocaleString()}
+                              </Typography>
+                            )}
+                          </Box>
+                          {/* Show all replies if expanded */}
+                          {expandedReplies[idx] && Array.isArray(fb.replies) && fb.replies.length > 0 && (
+                            <Box sx={{ mt: 2, pl: 2, borderLeft: "3px solid #00ff99" }}>
+                              {fb.replies.map((r, ridx) => (
+                                <Box key={ridx} sx={{ mb: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#00ff99", fontWeight: 700 }}>
+                                    {r.name} <span style={{ color: "#b0c4de", fontWeight: 400, fontSize: 13, marginLeft: 8 }}>
+                                      {r.time ? new Date(r.time * 1000).toLocaleString() : ""}
+                                    </span>
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: "#b0c4de" }}>{r.message}</Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                        </Paper>
+                      );
+                    })
                   )}
                 </Box>
               )}
@@ -1028,6 +1178,44 @@ const App: React.FC = () => {
             onClick={handleSendWithName}
             disabled={!feedbackName.trim()}
             sx={{ bgcolor: "#00bfff", color: "#111", fontWeight: 700 }}
+          >
+            Send
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reply dialog */}
+      <Dialog open={replyDialogOpen} onClose={() => setReplyDialogOpen(false)} PaperProps={{
+        sx: { bgcolor: "rgba(10,18,33,0.97)", borderRadius: 3, color: "#fff", minWidth: 320 }
+      }}>
+        <DialogTitle sx={{ color: "#00ff99", fontWeight: 700, textAlign: "center" }}>
+          Reply to Feedback
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            label="Your Name"
+            value={replyName}
+            onChange={e => setReplyName(e.target.value)}
+            fullWidth
+            sx={{ mt: 2, bgcolor: "#16233a", borderRadius: 2 }}
+            InputLabelProps={{ style: { color: "#b0c4de" } }}
+          />
+          <TextField
+            label="Response"
+            value={replyText}
+            onChange={e => setReplyText(e.target.value)}
+            fullWidth
+            sx={{ mt: 2, bgcolor: "#16233a", borderRadius: 2 }}
+            InputLabelProps={{ style: { color: "#b0c4de" } }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReplyDialogOpen(false)} sx={{ color: "#b0c4de" }}>Cancel</Button>
+          <Button
+            onClick={handleSendReply}
+            disabled={!replyText.trim() || !replyName.trim()}
+            sx={{ bgcolor: "#00ff99", color: "#111", fontWeight: 700 }}
           >
             Send
           </Button>

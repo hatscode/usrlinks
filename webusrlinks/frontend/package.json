@@ -1,40 +1,31 @@
 {
-  "name": "usrlinks-frontend",
+  "name": "webusrlinks-frontend",
   "version": "1.0.0",
   "private": true,
+  "description": "Frontend for USRLINKS OSINT tool",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.14.0",
-    "@mui/material": "^5.14.0",
-    "axios": "^1.6.7",
+    "@mui/icons-material": "^5.15.16",
+    "@mui/material": "^5.15.16",
+    "axios": "^1.6.8",
     "file-saver": "^2.0.5",
-    "framer-motion": "^12.23.12",
+    "framer-motion": "^11.0.17",
     "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.8.0",
+    "jspdf-autotable": "^3.8.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.5"
   },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
   "devDependencies": {
-    "@types/file-saver": "^2.0.7",
-    "@types/react-dom": "^19.1.7"
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15"
   }
 }
