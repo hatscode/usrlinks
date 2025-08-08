@@ -1,0 +1,120 @@
+[
+
+  {
+    "name": "Alice",
+    "message": "Great tool, very useful for OSINT tasks!",
+    "time": 1754651000,
+    "replies": [
+      {
+        "name": "Bob",
+        "message": "I agree, it's super fast.",
+        "time": 1754651100
+      },
+      {
+        "name": "Carol",
+        "message": "Would love to see more platforms.",
+        "time": 1754651200
+      }
+    ],
+    "likes": 4,
+    "dislikes": 0
+  },
+  {
+    "name": "Dave",
+    "message": "UI is clean and easy to use.",
+    "time": 1754651300,
+    "replies": [
+      {
+        "name": "Eve",
+        "message": "Yeah, the dark mode is nice.",
+        "time": 1754651400
+      }
+    ],
+    "likes": 2,
+    "dislikes": 0
+  },
+  {
+    "name": "Frank",
+    "message": "Feature request: export to Excel.",
+    "time": 1754651500,
+    "replies": [
+      {
+        "name": "Grace",
+        "message": "Export to PDF works well for me.",
+        "time": 1754651600
+      }
+    ],
+    "likes": 7,
+    "dislikes": 0
+  },
+  {
+    "name": "Heidi",
+    "message": "Thanks for making this open source!",
+    "time": 1754651700,
+    "likes": 6,
+    "dislikes": 0
+  },
+  {
+    "name": "Alice",
+    "message": "Really impressed with how fast the scan is. Found my profiles everywhere!",
+    "time": 1754652001,
+    "replies": [
+      {
+        "name": "Bob",
+        "message": "Same here, the speed is awesome.",
+        "time": 1754652101
+      }
+    ],
+    "likes": 2,
+    "dislikes": 0
+  },
+  {
+    "name": "Charlie",
+    "message": "Would love to see more platforms supported in the future.",
+    "time": 1754652201,
+    "replies": [
+      {
+        "name": "Admin",
+        "message": "Thanks for the suggestion! More platforms are coming soon.",
+        "time": 1754652301
+      }
+    ],
+    "likes": 3,
+    "dislikes": 0
+  },
+  {
+    "name": "Eve",
+    "message": "The UI is clean and easy to use. Great job!",
+    "time": 1754652401,
+    "replies": [
+      {
+        "name": "Mallory",
+        "message": "I agree, dark mode looks great.",
+        "time": 1754652501
+      }
+    ],
+    "likes": 1,
+    "dislikes": 0
+  },
+  {
+    "name": "Trent",
+    "message": "Export to PDF works perfectly. Can you add Excel export?",
+    "time": 1754652601,
+    "replies": [
+      {
+        "name": "Admin",
+        "message": "Excel export is on our roadmap!",
+        "time": 1754652701
+      }
+    ],
+    "likes": 0,
+    "dislikes": 0
+  },
+  {
+    "name": "Peggy",
+    "message": "Thanks for making this open source. Learned a lot from the code.",
+    "time": 1754652801,
+    "likes": 8,
+    "dislikes": 0
+  }
+]
