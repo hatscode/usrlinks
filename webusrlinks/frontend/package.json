@@ -9,6 +9,7 @@
     "@mui/material": "^5.14.0",
     "axios": "^1.6.7",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.23.12",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.0",
     "react": "^18.2.0",

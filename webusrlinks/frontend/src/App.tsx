@@ -21,6 +21,7 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { saveAs } from "file-saver";
 import XIcon from "@mui/icons-material/Close"; 
+import { motion, Variants } from "framer-motion";
 
 // background 
 const AnimatedBackground = () => (
@@ -98,6 +99,17 @@ const defaultPlatforms = [
 ];
 
 const LOG_LIMIT = 20;
+
+// Animated RadarIcon with rotation
+const AnimatedRadar = () => (
+  <motion.span
+    animate={{ rotate: [0, 360] }}
+    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+    style={{ display: "inline-block" }}
+  >
+    <RadarIcon sx={{ color: "#00bfff", fontSize: 40 }} />
+  </motion.span>
+);
 
 const App: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -364,40 +376,68 @@ const App: React.FC = () => {
     setTimeout(() => setFeedbackSent(false), 3000);
   };
 
+  // Animation variants for entrance
+  const slideUp: Variants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: (i: number = 1) => ({
+      opacity: 1,
+      y: 0,
+      transition: { delay: i * 0.12, duration: 0.6, type: "spring" as const }
+    })
+  };
+
   // layout
   return (
     <Box sx={{ minHeight: "100vh", width: "100vw", position: "relative", overflowX: "hidden" }}>
       <AnimatedBackground />
 
       {/* scan/logbar/results table */}
-      <Box sx={{
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        px: { xs: 1, md: 3 },
-        pt: { xs: 2, md: 4 },
-        gap: { xs: 1, md: 3 },
-        zIndex: 1,
-        position: "relative"
-      }}>
-        {/* Scan section */}
-        <Box sx={{
-          flex: 1,
-          minWidth: 320,
-          maxWidth: 400,
-          bgcolor: "rgba(10,18,33,0.97)",
-          borderRadius: 4,
-          boxShadow: 6,
-          p: 3,
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        // Remove variants here, only use on children
+        style={{
           display: "flex",
-          flexDirection: "column",
-          gap: 2
-        }}>
+          flexDirection: "row",
+          justifyContent: "center",
+          alignItems: "flex-start",
+          gap: 24,
+          zIndex: 1,
+          position: "relative",
+          paddingLeft: 24,
+          paddingRight: 24,
+          paddingTop: 32
+        }}
+      >
+        {/* Scan section */}
+        <motion.div
+          custom={1}
+          initial="hidden"
+          animate="visible"
+          variants={slideUp}
+          style={{
+            flex: 1,
+            minWidth: 320,
+            maxWidth: 400,
+            backgroundColor: "rgba(10,18,33,0.97)",
+            borderRadius: 16,
+            boxShadow: "0px 6px 24px rgba(0,0,0,0.3)",
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16
+          }}
+        >
           {/* Intro */}
-          <Box>
-            <Typography variant="h3" sx={{ fontWeight: 900, color: "#00bfff", mb: 1, letterSpacing: 1 }}>
-              USRLINKS OSINT
+          <Box
+            component={motion.div}
+            custom={2}
+            initial="hidden"
+            animate="visible"
+            variants={slideUp}
+          >
+            <Typography variant="h3" sx={{ fontWeight: 900, color: "#00bfff", mb: 1, letterSpacing: 1, display: "flex", alignItems: "center", gap: 1 }}>
+              USRLINKS OSINT <AnimatedRadar />
             </Typography>
             <Typography variant="subtitle1" sx={{ color: "#b0c4de", fontWeight: 500 }}>
               Fast, modern username reconnaissance across 30+ platforms.
@@ -569,22 +609,28 @@ const App: React.FC = () => {
               {`@keyframes glow { 0% { box-shadow: 0 0 16px #00bfff; } 100% { box-shadow: 0 0 32px #00bfff, 0 0 8px #0055ff; } }`}
             </style>
           </Box>
-        </Box>
+        </motion.div>
 
         {/* logbar sec. */}
-        <Box sx={{
-          flex: 1,
-          minWidth: 340,
-          maxWidth: 500,
-          bgcolor: "rgba(15,25,40,0.97)",
-          borderRadius: 4,
-          boxShadow: 6,
-          p: 3,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          alignItems: "stretch"
-        }}>
+        <motion.div
+          custom={3}
+          initial="hidden"
+          animate="visible"
+          variants={slideUp}
+          style={{
+            flex: 1,
+            minWidth: 340,
+            maxWidth: 500,
+            backgroundColor: "rgba(15,25,40,0.97)",
+            borderRadius: 16,
+            boxShadow: "0px 6px 24px rgba(0,0,0,0.3)",
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+            alignItems: "stretch"
+          }}
+        >
           <Typography variant="h6" sx={{ color: "#00bfff", mb: 1 }}>Scan Logs</Typography>
           <Paper sx={{
             p: 2,
@@ -650,21 +696,28 @@ const App: React.FC = () => {
               </Button>
             </Box>
           </Box>
-        </Box>
+        </motion.div>
 
         {/* results table */}
-        <Box sx={{
-          flex: 2,
-          minWidth: 340,
-          maxWidth: 700,
-          bgcolor: "rgba(15,25,40,0.97)",
-          borderRadius: 4,
-          boxShadow: 6,
-          p: 3,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2
-        }}>
+        <Box
+          component={motion.div}
+          custom={4}
+          initial="hidden"
+          animate="visible"
+          variants={slideUp}
+          sx={{
+            flex: 2,
+            minWidth: 340,
+            maxWidth: 700,
+            bgcolor: "rgba(15,25,40,0.97)",
+            borderRadius: 4,
+            boxShadow: 6,
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2
+          }}
+        >
           <Typography variant="h6" sx={{ color: "#00bfff", mb: 1 }}>Results</Typography>
           {/* Download buttons */}
           <Box display="flex" gap={2} mb={2}>
@@ -788,21 +841,28 @@ const App: React.FC = () => {
             </Box>
           )}
         </Box>
-      </Box>
+      </motion.div>
 
       {/* Footer */}
-      <Box sx={{
-        width: "100%",
-        bgcolor: "#0a1833",
-        color: "#b0c4de",
-        py: 3,
-        px: 4,
-        mt: 6,
-        borderTop: "2px solid #00bfff",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center"
-      }}>
+      <Box
+        component={motion.div}
+        initial="hidden"
+        animate="visible"
+        variants={slideUp}
+        custom={5}
+        sx={{
+          width: "100%",
+          bgcolor: "#0a1833",
+          color: "#b0c4de",
+          py: 3,
+          px: 4,
+          mt: 6,
+          borderTop: "2px solid #00bfff",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}
+      >
         {/* Dev info left */}
         <Box>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#00bfff" }}>
@@ -826,7 +886,7 @@ const App: React.FC = () => {
               </a>
             </Typography>
             <Avatar sx={{ bgcolor: "#111" }}>
-              <XIcon sx={{ color: "#fff" }} />
+              <TwitterIcon sx={{ color: "#1da1f2" }} />
             </Avatar>
             <Typography variant="body2" sx={{ color: "#b0c4de" }}>
               <a href="https://x.com/stilla1ex" target="_blank" rel="noopener noreferrer" style={{ color: "#b0c4de", textDecoration: "none" }}>
