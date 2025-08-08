@@ -14,7 +14,7 @@ This repository maintains a clear separation between different implementation ap
   - Lightweight and portable
   - No web server dependencies
 
-### Web UI Branch (`web-ui`) - Community Maintained
+### Web Version Branch (`web-version`) - Community Maintained
 - **Purpose**: Web-based interface for USRLINKS
 - **Target Users**: Users preferring graphical interfaces
 - **Key Features**:
@@ -50,12 +50,12 @@ git checkout main
 git checkout -b feature/your-terminal-enhancement
 ```
 
-### To Web UI Branch
+### To Web Version Branch
 ```bash
 # Clone and work on web features
 git clone https://github.com/stilla1ex/usrlinks.git
 cd usrlinks
-git checkout -b web-ui origin/web-ui  # If exists, or create new
+git checkout -b web-version origin/web-version  # If exists, or create new
 # Make your web-focused changes
 git checkout -b feature/your-web-enhancement
 ```
@@ -71,7 +71,7 @@ git checkout -b feature/your-web-enhancement
 - ❌ Web servers or frameworks
 - ❌ Browser-based interfaces
 
-### For Web UI Branch
+### For Web Version Branch
 - ✅ Web frameworks (Flask, Django, etc.)
 - ✅ Frontend interfaces
 - ✅ Web dashboards
@@ -93,10 +93,10 @@ As the project maintainer, you can:
 Thank you for your contribution! However, this repository maintains a terminal-first 
 approach on the main branch. 
 
-Your web-based enhancements would be perfect for the `web-ui` branch. Please:
+Your web-based enhancements would be perfect for the `web-version` branch. Please:
 
-1. Rebase your changes onto the `web-ui` branch
-2. Update your PR target to `web-ui` instead of `main`
+1. Change your PR target from `main` to `web-version`
+2. Or let me know and I can redirect it for you
 3. Ensure your changes don't modify core terminal functionality
 
 This helps us maintain both approaches for different user needs.
