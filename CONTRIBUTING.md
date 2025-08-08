@@ -12,7 +12,7 @@ USRLINKS is designed as a **terminal-based OSINT tool** with the following core 
 ## Branch Strategy
 
 - **`main` branch**: Terminal-only implementation (protected)
-- **`web-ui` branch**: For web-based contributions (if community wants this)
+- **`web-version` branch**: For web-based contributions (if community wants this)
 - **Feature branches**: For specific enhancements
 
 ## Contributing Guidelines
@@ -34,7 +34,7 @@ USRLINKS is designed as a **terminal-based OSINT tool** with the following core 
 
 ### For Web-Based Features (separate branch)
 If you want to contribute web-based functionality:
-1. Create or use the `web-ui` branch
+1. Create or use the `web-version` branch
 2. Ensure it doesn't modify core terminal functionality
 3. Keep it as a separate application layer
 
@@ -43,7 +43,7 @@ If you want to contribute web-based functionality:
 1. **Fork the repository**
 2. **Choose the right branch:**
    - Use `main` for terminal enhancements
-   - Use `web-ui` for web features
+   - Use `web-version` for web features
 3. **Create a feature branch** from the appropriate base
 4. **Submit a pull request** to the correct target branch
 
