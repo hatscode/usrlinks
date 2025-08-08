@@ -2,6 +2,14 @@
 """
 USRLINKS - Advanced OSINT Username Hunter
 Terminal-based tool to check username availability across 100+ platforms.
+
+This is intentionally designed as a command-line tool for:
+- Maximum portability and security
+- Integration with existing OSINT workflows  
+- Use in penetration testing environments
+- Automation and batch processing
+
+Web-based interfaces are maintained separately on the 'web-ui' branch.
 """
 
 import os

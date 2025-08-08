@@ -5,7 +5,9 @@
 
 # USRLINKS - Advanced OSINT Username Hunter
 
-USRLINKS is a comprehensive Python reconnaissance tool that checks username availability across 100+ social media platforms and performs deep OSINT intelligence gathering. Designed for security professionals, penetration testers, and OSINT investigators.
+USRLINKS is a comprehensive **terminal-based** Python reconnaissance tool that checks username availability across 100+ social media platforms and performs deep OSINT intelligence gathering. Designed for security professionals, penetration testers, and OSINT investigators.
+
+> **🖥️ Terminal-First Design**: This tool is intentionally designed as a command-line application for maximum portability, security, and integration with existing OSINT workflows. HTML reports are generated as static files for easy sharing and documentation.
 
 ## Features
 
