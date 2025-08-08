@@ -1,30 +1,40 @@
-<img width="1023" height="614" alt="image" src="https://github.com/user-attachments/assets/d7d74273-e552-426b-a15d-7241193950e2" />
+<img width="1023" height="614" alt="image" src="https://github.com/user-attachments/a## Supported Platforms
+
+Major Social Networks: GitHub, Twitter, Instagram, LinkedIn, TikTok, Facebook, Reddit, YouTube, Twitch
+Professional: LinkedIn, GitHub, GitLab, Bitbucket, HackerNews, Medium
+Media & Creative: Instagram, YouTube, TikTok, Vimeo, SoundCloud, DeviantArt, Pinterest
+Gaming: Steam, Twitch, Roblox
+Communication: Telegram, Discord, Skype
+Marketplaces: Etsy, eBay
+And 80+ more platforms...74273-e552-426b-a15d-7241193950e2" />
 
 
 
 
 # USRLINKS - Advanced OSINT Username Hunter
 
-USRLINKS is a comprehensive **terminal-based** Python reconnaissance tool that checks username availability across 100+ social media platforms and performs deep OSINT intelligence gathering. Designed for security professionals, penetration testers, and OSINT investigators.
+USRLINKS is a comprehensive Python reconnaissance tool that checks username availability across 100+ social media platforms and performs deep OSINT intelligence gathering. The tool features both command-line interface and web-based functionality, designed for security professionals, penetration testers, and OSINT investigators.
 
-> **🖥️ Terminal-First Design**: This tool is intentionally designed as a command-line application for maximum portability, security, and integration with existing OSINT workflows. HTML reports are generated as static files for easy sharing and documentation.
+USRLINKS provides flexible deployment options with both terminal-based scanning and web interface capabilities for maximum portability, security, and integration with existing OSINT workflows. Reports are generated in multiple formats including HTML, JSON, and CSV for easy sharing and documentation.
 
 ## Features
 
 ### Core Functionality
-* **100+ Platform Coverage**: Scan username availability across major social networks, forums, and platforms
-* **Deep Reconnaissance**: Extract emails, phone numbers, locations, and bio information from profiles
-* **Profile Intelligence**: Analyze profile images with hash generation for cross-platform correlation
-* **Google Dorks Generator**: Automatically generate targeted search queries for enhanced OSINT
-* **Advanced Reporting**: Beautiful HTML reports with interactive tables and reconnaissance data
-* **Export Options**: CSV and JSON formats for data analysis and integration
+- 100+ Platform Coverage: Scan username availability across major social networks, forums, and platforms
+- Deep Reconnaissance: Extract emails, phone numbers, locations, and bio information from profiles
+- Profile Intelligence: Analyze profile images with hash generation for cross-platform correlation
+- Google Dorks Generator: Automatically generate targeted search queries for enhanced OSINT
+- Advanced Reporting: Beautiful HTML reports with interactive tables and reconnaissance data
+- Export Options: CSV and JSON formats for data analysis and integration
 
 ### Technical Features
-* **Multi-threaded Scanning**: Fast concurrent processing for efficient reconnaissance
-* **Proxy & Tor Support**: Anonymous scanning with SOCKS/HTTP proxy support
-* **Retry Logic**: Intelligent retry mechanisms for failed requests
-* **User Agent Rotation**: Anti-detection measures with randomized headers
-* **Platform-Specific Detection**: Custom logic for accurate availability detection
+- Multi-threaded Scanning: Fast concurrent processing for efficient reconnaissance
+- Proxy & Tor Support: Anonymous scanning with SOCKS/HTTP proxy support
+- Retry Logic: Intelligent retry mechanisms for failed requests
+- User Agent Rotation: Anti-detection measures with randomized headers
+- Platform-Specific Detection: Custom logic for accurate availability detection
+- Web Interface: Browser-based interface for ease of use and accessibility
+- Command Line Interface: Terminal-based operation for automation and scripting
 
 ## Installation
 
@@ -75,11 +85,11 @@ python3 usrlinks.py -u john_doe --proxy http://127.0.0.1:8080
 ```
 
 ### HTML Report Features
-- **Interactive Summary Cards**: Visual statistics of available/taken/error counts
-- **Sortable Results Table**: Click-to-visit links for all platforms
-- **Reconnaissance Data**: Detailed intelligence from deep scans
-- **Professional Styling**: Clean, modern interface with responsive design
-- **Export Ready**: Print-friendly layout for reporting
+- Interactive Summary Cards: Visual statistics of available/taken/error counts
+- Sortable Results Table: Click-to-visit links for all platforms
+- Reconnaissance Data: Detailed intelligence from deep scans
+- Professional Styling: Clean, modern interface with responsive design
+- Export Ready: Print-friendly layout for reporting
 
 ## Supported Platforms
 
@@ -136,12 +146,12 @@ usrlinks/
 
 Contributions are welcome! The project is continuously evolving. Here's how you can help:
 
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Add new platforms** to the platform database
-4. **Improve reconnaissance modules** for better data extraction
-5. **Enhance the HTML reporting** with new visualizations
-6. **Submit a pull request**
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Add new platforms to the platform database
+4. Improve reconnaissance modules for better data extraction
+5. Enhance the HTML reporting with new visualizations
+6. Submit a pull request
 
 ### Adding New Platforms
 To add a new platform, modify the `load_platforms()` function in `usrlinks.py`:
@@ -164,19 +174,19 @@ We appreciate all the contributors who have helped make USRLINKS better:
 
 ## Disclaimer
 
-**IMPORTANT**: This tool is designed for:
-- **Educational purposes** and cybersecurity research
-- **Authorized penetration testing** with proper permission
-- **OSINT investigations** within legal boundaries
-- **Security assessments** of your own accounts
+IMPORTANT: This tool is designed for:
+- Educational purposes and cybersecurity research
+- Authorized penetration testing with proper permission
+- OSINT investigations within legal boundaries
+- Security assessments of your own accounts
 
-**Users are responsible for**:
+Users are responsible for:
 - Compliance with applicable laws and regulations
 - Respecting platform terms of service
 - Obtaining proper authorization before testing
 - Using the tool ethically and responsibly
 
-**The developers are not responsible for any misuse of this tool.**
+The developers are not responsible for any misuse of this tool.
 
 ## License
 
@@ -188,8 +198,8 @@ Open Source Intelligence (OSINT) is the practice of collecting information from 
 
 ---
 
-**⭐ Star this repository if you find it useful!**
+Star this repository if you find it useful!
 
-**🐛 Found a bug? [Open an issue](https://github.com/stilla1ex/usrlinks/issues)**
+Found a bug? [Open an issue](https://github.com/stilla1ex/usrlinks/issues)
 
-**💡 Have a feature request? [Start a discussion](https://github.com/stilla1ex/usrlinks/discussions)**
+Have a feature request? [Start a discussion](https://github.com/stilla1ex/usrlinks/discussions)
