@@ -1,6 +1,0 @@
-requests
-beautifulsoup4
-fake_useragent
-tqdm
-dnspython
-tabulate  # used for summary tables
