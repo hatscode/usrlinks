@@ -1,4 +1,6 @@
-<img width="1023" height="614" alt="image" src="https://github.com/user-attachments/a## Supported Platforms
+<img width="1023" height="614" alt="image" src="https://github.com/user-attachments/assets/d7d74273-e552-426b-a15d-7241193950e2" />
+
+## Supported Platforms
 
 Major Social Networks: GitHub, Twitter, Instagram, LinkedIn, TikTok, Facebook, Reddit, YouTube, Twitch
 Professional: LinkedIn, GitHub, GitLab, Bitbucket, HackerNews, Medium
@@ -6,7 +8,7 @@ Media & Creative: Instagram, YouTube, TikTok, Vimeo, SoundCloud, DeviantArt, Pin
 Gaming: Steam, Twitch, Roblox
 Communication: Telegram, Discord, Skype
 Marketplaces: Etsy, eBay
-And 80+ more platforms...74273-e552-426b-a15d-7241193950e2" />
+And 80+ more platforms.
 
 
 
@@ -170,7 +172,6 @@ We appreciate all the contributors who have helped make USRLINKS better:
 
 - [@stilla1ex](https://github.com/stilla1ex) - Project creator and maintainer
 - [@max5010cs](https://github.com/max5010cs) - Contributor
-- [@Copilot](https://github.com/Copilot) - AI Assistant
 
 ## Disclaimer
 
