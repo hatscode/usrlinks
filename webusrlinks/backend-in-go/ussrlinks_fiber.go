@@ -706,8 +706,61 @@ func main() {
 		return c.JSON(platforms)
 	})
 
+	// --- Feedback endpoint ---
+	app.Post("/feedback", func(c *fiber.Ctx) error {
+		var req struct {
+			Name    string `json:"name"`
+			Message string `json:"message"`
+		}
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+		}
+		if req.Name == "" || req.Message == "" {
+			return c.Status(400).JSON(fiber.Map{"error": "Name and message required"})
+		}
+		err := sendTelegramFeedback(req.Name, req.Message)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"status": "ok"})
+	})
+
 	fmt.Println("USRLINKS Fiber backend running on :8080")
 	app.Listen("0.0.0.0:8080")
+}
+
+// Send feedback to Telegram bot using bot token and chat ID from env
+func sendTelegramFeedback(name, message string) error {
+	botToken := os.Getenv("TG_BOT_TOKEN")
+	chatID := os.Getenv("TG_BOT_CHAT_ID") // Numeric Telegram user ID
+	if botToken == "" || chatID == "" {
+		return fmt.Errorf("telegram bot token or chat ID not set")
+	}
+	text := fmt.Sprintf("*Feedback from %s:*\n%s", name, message)
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
+	payload := map[string]interface{}{
+		"chat_id":    chatID,
+		"text":       text,
+		"parse_mode": "Markdown",
+	}
+	body, _ := json.Marshal(payload)
+	resp, err := http.Post(url, "application/json", bytes.NewReader(body))
+	if err != nil {
+		if logger != nil {
+			logger.Printf("Telegram POST error: %v", err)
+		}
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		errMsg := fmt.Sprintf("telegram API error: %s - %s", resp.Status, string(respBody))
+		if logger != nil {
+			logger.Printf("Telegram API error: %s", errMsg)
+		}
+		return fmt.Errorf("%s", errMsg)
+	}
+	return nil
 }
 
 // 1. Terminal UI & Styling

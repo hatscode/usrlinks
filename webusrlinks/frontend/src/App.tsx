@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Container, Box, Typography, TextField, Button, Switch, FormControlLabel,
   Paper, CircularProgress, Snackbar, Alert, AppBar, Toolbar, IconButton, Tooltip,
@@ -22,6 +22,11 @@ import "jspdf-autotable";
 import { saveAs } from "file-saver";
 import XIcon from "@mui/icons-material/Close"; 
 import { motion, Variants } from "framer-motion";
+import TextareaAutosize from "@mui/material/TextareaAutosize";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 
 // background 
 const AnimatedBackground = () => (
@@ -55,6 +60,8 @@ const API_BASE =
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
     ? "http://localhost:8080"
     : "https://usrlinks.onrender.com";
+
+const TG_BOT_API = process.env.REACT_APP_TG_BOT_API || "https://usrlinks.onrender.com";
 
 const defaultThreads = 10;
 
@@ -139,6 +146,8 @@ const App: React.FC = () => {
   const [customPlatformInput, setCustomPlatformInput] = useState("");
   const [feedback, setFeedback] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [askNameOpen, setAskNameOpen] = useState(false);
+  const [feedbackName, setFeedbackName] = useState("");
   const [platformsList, setPlatformsList] = useState(
     defaultPlatforms.map(p => ({ ...p, enabled: true, custom: false }))
   );
@@ -368,11 +377,30 @@ const App: React.FC = () => {
     setLoading(false);
   };
 
-  // for now dummy feedback bar can be upgraded to tg bot api or actual db
-  const handleFeedbackSend = () => {
+  // Feedback send logic with error/success snackbar
+  const handleFeedbackSend = async () => {
+    setAskNameOpen(true);
+  };
+
+  const handleSendWithName = async () => {
+    setAskNameOpen(false);
     setFeedbackSent(true);
-    setFeedback("");
-    // send 
+    try {
+      const res = await fetch(`${TG_BOT_API}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: feedbackName, message: feedback })
+      });
+      if (!res.ok) {
+        setSnackbar({ open: true, message: "Failed to send feedback.", severity: "error" });
+      } else {
+        setSnackbar({ open: true, message: "Feedback sent!", severity: "success" });
+      }
+      setFeedback("");
+      setFeedbackName("");
+    } catch {
+      setSnackbar({ open: true, message: "Failed to send feedback.", severity: "error" });
+    }
     setTimeout(() => setFeedbackSent(false), 3000);
   };
 
@@ -675,22 +703,38 @@ const App: React.FC = () => {
             <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#00bfff", mb: 1 }}>
               Leave Feedback
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <TextField
-                label="Your message"
+            <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
+              <TextareaAutosize
+                minRows={2}
+                maxRows={8}
                 value={feedback}
                 onChange={e => setFeedback(e.target.value)}
-                size="small"
-                sx={{ bgcolor: "#16233a", borderRadius: 2, minWidth: 180, color: "#fff" }}
-                InputLabelProps={{ style: { color: "#b0c4de" } }}
+                placeholder="Your message"
+                style={{
+                  width: 180,
+                  borderRadius: 8,
+                  background: "#16233a",
+                  color: "#fff",
+                  border: "1px solid #223355",
+                  padding: 8,
+                  fontFamily: "inherit",
+                  fontSize: 16,
+                  resize: "vertical"
+                }}
                 disabled={feedbackSent}
+                onKeyDown={e => {
+                  // Prevent Enter from submitting, allow newline
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    // Do nothing, allow newline
+                  }
+                }}
               />
               <Button
                 variant="contained"
                 endIcon={<SendIcon />}
                 onClick={handleFeedbackSend}
                 disabled={feedbackSent || !feedback.trim()}
-                sx={{ bgcolor: "#00bfff", color: "#111", fontWeight: 700 }}
+                sx={{ bgcolor: "#00bfff", color: "#111", fontWeight: 700, minHeight: 40 }}
               >
                 {feedbackSent ? "Sent!" : "Send"}
               </Button>
@@ -896,6 +940,48 @@ const App: React.FC = () => {
           </Box>
         </Box>
       </Box>
+
+      {/* Name dialog for feedback */}
+      <Dialog open={askNameOpen} onClose={() => setAskNameOpen(false)} PaperProps={{
+        sx: { bgcolor: "rgba(10,18,33,0.97)", borderRadius: 3, color: "#fff", minWidth: 320 }
+      }}>
+        <DialogTitle sx={{ color: "#00bfff", fontWeight: 700, textAlign: "center" }}>
+          Enter your name
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            label="Name"
+            value={feedbackName}
+            onChange={e => setFeedbackName(e.target.value)}
+            fullWidth
+            sx={{ mt: 2, bgcolor: "#16233a", borderRadius: 2 }}
+            InputLabelProps={{ style: { color: "#b0c4de" } }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAskNameOpen(false)} sx={{ color: "#b0c4de" }}>Cancel</Button>
+          <Button
+            onClick={handleSendWithName}
+            disabled={!feedbackName.trim()}
+            sx={{ bgcolor: "#00bfff", color: "#111", fontWeight: 700 }}
+          >
+            Send
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for feedback */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
