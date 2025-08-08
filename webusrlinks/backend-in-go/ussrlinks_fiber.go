@@ -803,7 +803,7 @@ type Feedback struct {
 
 // Save feedback to file (append to feedbacks.json)
 func saveFeedbackToFile(fb Feedback) error {
-	const feedbackFile = "feedbacks.json"
+	const feedbackFile = "/tmp/feedbacks.json"
 	var feedbacks []Feedback
 
 	// Read existing feedbacks
