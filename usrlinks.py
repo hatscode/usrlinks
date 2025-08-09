@@ -28,6 +28,11 @@ from requests.adapters import HTTPAdapter, Retry
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 import logging
+import itertools
+from rapidfuzz import fuzz
+from rich.console import Console
+from rich.table import Table as RichTable
+from rich import box
 
 # try exception block
 try:
@@ -639,9 +644,227 @@ def print_result_table(results):
     headers = ["Platform", "Status", "Profile"]
     print("\n" + Colors.CYAN + tabulate(table_data, headers=headers, tablefmt="github") + Colors.RESET)
 
+def generate_username_variants(username):
+    """Generate leet/fuzzy variants of a username."""
+    leet_map = {
+        'a': ['4', '@'], 'e': ['3'], 'i': ['1'], 'o': ['0'], 's': ['5'], 't': ['7'],
+        'A': ['4', '@'], 'E': ['3'], 'I': ['1'], 'O': ['0'], 'S': ['5'], 'T': ['7']
+    }
+    variants = set()
+
+    # leet replacements
+    def leetify(s):
+        out = set()
+        chars = list(s)
+        for i, c in enumerate(chars):
+            if c in leet_map:
+                for l in leet_map[c]:
+                    new = chars[:]
+                    new[i] = l
+                    out.add(''.join(new))
+        return out
+
+    # remove/replace underscores/dots
+    def underscore_dot_variants(s):
+        out = set()
+        if '_' in s:
+            out.add(s.replace('_', ''))
+            out.add(s.replace('_', '-'))
+        if '.' in s:
+            out.add(s.replace('.', ''))
+            out.add(s.replace('.', '-'))
+        return out
+
+    # Duplicate letters (max twice in a row)
+    def duplicate_letters(s):
+        out = set()
+        for i in range(len(s)):
+            out.add(s[:i+1] + s[i] + s[i+1:])
+        return out
+
+    # Swap adjacent letters
+    def swap_adjacent(s):
+        out = set()
+        chars = list(s)
+        for i in range(len(chars)-1):
+            swapped = chars[:]
+            swapped[i], swapped[i+1] = swapped[i+1], swapped[i]
+            out.add(''.join(swapped))
+        return out
+
+    # Append/prepend numbers
+    def add_numbers(s):
+        out = set()
+        for n in range(1, 10):
+            out.add(f"{s}{n}")
+            out.add(f"{n}{s}")
+        return out
+
+    # Collect all variants
+    variants.update(leetify(username))
+    variants.update(underscore_dot_variants(username))
+    variants.update(duplicate_letters(username))
+    variants.update(swap_adjacent(username))
+    variants.update(add_numbers(username))
+
+    # Combine some rules for more variants
+    for v in list(variants):
+        variants.update(leetify(v))
+        variants.update(underscore_dot_variants(v))
+        variants.update(duplicate_letters(v))
+        variants.update(swap_adjacent(v))
+        variants.update(add_numbers(v))
+
+    # Remove original username and deduplicate
+    variants.discard(username)
+    return list(set(variants))
+
+def run_fuzzy_scan(username, platforms, proxy=None, tor=False, threads=10, timeout=15, deep_scan=False, fuzzy_all=False):
+    console = Console()
+    variants = generate_username_variants(username)
+    if not variants:
+        console.print("[yellow][*] No variants generated for fuzzy scan.[/yellow]")
+        return
+
+    # 1. Detecting -f flag and interactive selection unless --fuzzy-all
+    selected_platforms = []
+    platform_names = list(platforms.keys())
+    if not fuzzy_all:
+        print(Colors.YELLOW + "[!] -f (fuzzy scan) detected.\n"
+              "Fuzzing will generate many username variants and check them across platforms.\n"
+              "This can take a long time because it multiplies:\n"
+              "    variants × platforms\n"
+              "Recommended: Select only 1–2 platforms to test before doing a full run.\n\n"
+              "You will:\n"
+              "  1. Choose [y/n] for each default platform.\n"
+              "  2. Optionally add custom platform URLs.\n"
+              "  3. Confirm before fuzzing starts.\n\n"
+              "Type 'ok' to continue, or 'n' to cancel." + Colors.RESET)
+        while True:
+            user_input = input("> ").strip().lower()
+            if user_input == "ok":
+                break
+            elif user_input == "n":
+                print(Colors.YELLOW + "[*] Fuzzy scan cancelled by user." + Colors.RESET)
+                return
+            else:
+                print(Colors.RED + "[!] Invalid input. Please type 'ok' to proceed or 'n' to cancel." + Colors.RESET)
+
+        # 2. Interactive default platform selection
+        for pname in platform_names:
+            while True:
+                choice = input(f"[?] Do you want to fuzz {pname}? [y/n]: ").strip().lower()
+                if choice == "y":
+                    selected_platforms.append(pname)
+                    break
+                elif choice == "n":
+                    break
+                else:
+                    print(Colors.RED + "[!] Invalid choice. Type 'y' for yes or 'n' for no." + Colors.RESET)
+
+        # 3. Optional custom URLs
+        while True:
+            custom = input("[?] Any custom platform URL to fuzz? Enter URL or 'n' for none: ").strip()
+            if custom.lower() == "n":
+                break
+            elif custom:
+                selected_platforms.append(custom)
+                while True:
+                    more = input("[?] Any more custom platforms? Enter URL or 'n' for none: ").strip()
+                    if more.lower() == "n":
+                        break
+                    elif more:
+                        selected_platforms.append(more)
+                    else:
+                        print(Colors.RED + "[!] Please enter a valid URL or 'n' for none." + Colors.RESET)
+                break
+            else:
+                print(Colors.RED + "[!] Please enter a valid URL or 'n' for none." + Colors.RESET)
+
+        # 4. Final confirmation
+        print(Colors.GREEN + "[+] Selected platforms for fuzzy scan:")
+        for p in selected_platforms:
+            print("   ", p)
+        print("\nProceed with fuzzing? [y/n]:" + Colors.RESET)
+        while True:
+            confirm = input("> ").strip().lower()
+            if confirm == "y":
+                break
+            elif confirm == "n":
+                print(Colors.YELLOW + "[*] Fuzzy scan cancelled by user." + Colors.RESET)
+                return
+            else:
+                print(Colors.RED + "[!] Invalid choice. Type 'y' for yes or 'n' for no." + Colors.RESET)
+    else:
+        selected_platforms = platform_names
+
+    # 5. Fuzzy scan execution
+    console.print("\n[bold green][*] Starting Advanced Username Fuzz Scan...[/bold green]\n")
+    results = []
+    session = get_session_with_retries(proxy, tor)
+    for platform in selected_platforms:
+        # If custom URL, use default GET logic
+        if platform in platforms:
+            info = platforms[platform]
+        else:
+            info = {"url": platform, "method": "status_code", "code": [404], "error_msg": ["404"]}
+        for variant in variants:
+            console.print(f"[cyan][+] Scanning {platform} for variant '{variant}'[/cyan]")
+            try:
+                url = info["url"].format(variant)
+                session.headers["User-Agent"] = get_random_user_agent()
+                response = session.get(url, timeout=timeout)
+                found = False
+                found_username = variant
+                if info["method"] == "status_code":
+                    if response.status_code not in info.get("code", [404]):
+                        found = True
+                elif info["method"] == "response_text":
+                    soup = BeautifulSoup(response.text, "html.parser")
+                    page_text = soup.get_text().lower()
+                    error_msgs = [msg.lower() for msg in info.get("error_msg", ["404"])]
+                    if not any(msg in page_text for msg in error_msgs):
+                        found = True
+                if found:
+                    score = fuzz.ratio(username, found_username)
+                    results.append({
+                        "platform": platform,
+                        "found_username": found_username,
+                        "similarity": score,
+                        "profile_url": url
+                    })
+            except Exception:
+                continue
+
+    # Print results table
+    if results:
+        table = RichTable(title="[bold magenta]Fuzzy Scan Results[/bold magenta]", box=box.DOUBLE_EDGE)
+        table.add_column("Platform", style="bold cyan")
+        table.add_column("Found Username", style="bold white")
+        table.add_column("Similarity", style="bold white")
+        table.add_column("Profile URL", style="bold white")
+        for r in results:
+            sim = r["similarity"]
+            if sim >= 80:
+                sim_str = f"[bold green]{sim}%[/bold green]"
+            elif sim >= 60:
+                sim_str = f"[bold yellow]{sim}%[/bold yellow]"
+            else:
+                sim_str = f"[bold red]{sim}%[/bold red]"
+            table.add_row(
+                f"[cyan]{r['platform']}[/cyan]",
+                f"[white]{r['found_username']}[/white]",
+                sim_str,
+                f"[blue]{r['profile_url']}[/blue]"
+            )
+        console.print(table)
+        console.print(f"\n[bold green][*] Fuzzy scan completed: {len(results)} matches found[/bold green]\n")
+    else:
+        console.print("[yellow][*] No fuzzy matches found.[/yellow]")
+
 def main():
     parser = argparse.ArgumentParser(description="USRLINKS - OSINT Username Hunter")
-    parser.add_argument("-u", "--username", help="Username to scan")
+    parser.add_argument("-u", "--username", help="Target username to scan", required=False)
     parser.add_argument("-p", "--proxy", help="HTTP/SOCKS proxy (e.g., http://127.0.0.1:8080)")
     parser.add_argument("-t", "--tor", action="store_true", help="Use Tor for anonymity")
     parser.add_argument("-th", "--threads", type=int, default=10, help="Number of threads (default: 10)")
@@ -650,32 +873,35 @@ def main():
     parser.add_argument("--list-platforms", action="store_true", help="List supported platforms and exit")
     parser.add_argument("--deep-scan", action="store_true", help="Perform deep reconnaissance on found profiles")
     parser.add_argument("--generate-dorks", action="store_true", help="Generate Google dorks for the username")
+    parser.add_argument("-f", "--fuzzy", action="store_true", help="Run advanced fuzzy username scan after normal scan")
+    parser.add_argument("--fuzzy-all", action="store_true", help="(Dangerous) Fuzz all platforms without prompt")
+    parser.add_argument("-r", "--retry", action="store_true", help="Retry failed requests after normal scan")
     
     args = parser.parse_args()
     platforms = load_platforms(args.platforms)
-    
+
     if args.list_platforms:
         list_platforms(platforms)
         sys.exit(0)
-    
+
     if args.generate_dorks:
         if not args.username:
             print(Colors.RED + "[-] Username required for dork generation")
             sys.exit(1)
         generate_dorks(args.username)
         sys.exit(0)
-    
+
     if not args.username:
         parser.print_help()
         sys.exit(1)
-    
+
     display_banner()
-    
+
     if args.deep_scan:
         print(Colors.YELLOW + f"[*] Deep scanning enabled - extracting profile information...\n")
-    
+
     print(Colors.YELLOW + f"[*] Scanning for username: {args.username}...\n")
-    
+
     results = scan_usernames(
         username=args.username,
         platforms=platforms,
@@ -684,44 +910,57 @@ def main():
         threads=args.threads,
         deep_scan=args.deep_scan
     )
-    
+
     print_result_table(results)  # show initial results table
 
-    # retry failed platforms 2 times again
-    failed_results = [r for r in results if r["available"] is None]
-    session = get_session_with_retries(args.proxy, args.tor)
-    if failed_results:
-        from tqdm import tqdm
-        for attempt in range(2):
-            tqdm.write(f"\n[⏳] Retrying failed platforms (Attempt {attempt + 1}/2)")
-            retry_results = []
-            for fr in failed_results:
-                tqdm.write(f"[•] Retrying {fr['platform']}...")
-                retry_result = check_platform(session, args.username, fr['platform'], platforms[fr['platform']], timeout=15)
-                retry_results.append(retry_result)
-
-                if retry_result["available"] is True:
-                    tqdm.write(f"[✓] {fr['platform']}: Available")
-                elif retry_result["available"] is False:
-                    tqdm.write(f"[✗] {fr['platform']}: Taken")
-                else:
-                    tqdm.write(f"[!] {fr['platform']}: Still error")
-
-            print_result_table(retry_results)
-            failed_results = [r for r in retry_results if r["available"] is None]
-
-            if not failed_results:
-                tqdm.write("[✓] All platforms resolved after retries.")
-                break
-
+    # Only retry if --retry is passed
+    if args.retry:
+        failed_results = [r for r in results if r["available"] is None]
+        session = get_session_with_retries(args.proxy, args.tor)
         if failed_results:
-            failed_names = [r["platform"] for r in failed_results]
-            tqdm.write(f"[*] Still failing after 2 retries: {failed_names}")
+            from tqdm import tqdm
+            for attempt in range(2):
+                tqdm.write(f"\n[⏳] Retrying failed platforms (Attempt {attempt + 1}/2)")
+                retry_results = []
+                for fr in failed_results:
+                    tqdm.write(f"[•] Retrying {fr['platform']}...")
+                    retry_result = check_platform(session, args.username, fr['platform'], platforms[fr['platform']], timeout=15)
+                    retry_results.append(retry_result)
+
+                    if retry_result["available"] is True:
+                        tqdm.write(f"[✓] {fr['platform']}: Available")
+                    elif retry_result["available"] is False:
+                        tqdm.write(f"[✗] {fr['platform']}: Taken")
+                    else:
+                        tqdm.write(f"[!] {fr['platform']}: Still error")
+
+                print_result_table(retry_results)
+                failed_results = [r for r in retry_results if r["available"] is None]
+
+                if not failed_results:
+                    tqdm.write("[✓] All platforms resolved after retries.")
+                    break
+
+            if failed_results:
+                failed_names = [r["platform"] for r in failed_results]
+                tqdm.write(f"[*] Still failing after 2 retries: {failed_names}")
 
     display_results(results, args.username, args.deep_scan)
-    
+
     if args.output:
         save_results(results, args.username, args.output)
+
+    # Fuzzy scan last if requested
+    if args.fuzzy:
+        run_fuzzy_scan(
+            username=args.username,
+            platforms=platforms,
+            proxy=args.proxy,
+            tor=args.tor,
+            threads=args.threads,
+            deep_scan=args.deep_scan,
+            fuzzy_all=getattr(args, "fuzzy_all", False)
+        )
 
 if __name__ == "__main__":
     try:
