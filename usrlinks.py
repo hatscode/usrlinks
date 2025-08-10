@@ -33,6 +33,8 @@ from rapidfuzz import fuzz
 from rich.console import Console
 from rich.table import Table as RichTable
 from rich import box
+import asyncio
+import aiohttp
 
 # try exception block
 try:
@@ -794,7 +796,7 @@ def run_fuzzy_scan(username, platforms, proxy=None, tor=False, threads=10, timeo
                 print(Colors.YELLOW + "[*] Fuzzy scan cancelled by user." + Colors.RESET)
                 return
             else:
-                print(Colors.RED + "[!] Invalid choice. Type 'y' for yes or 'n' for no." + Colors.RESET)
+                print(Colors.RED + "[!] Invalid choice. Type 'y' for yes or 'n' to cancel." + Colors.RESET)
     else:
         selected_platforms = platform_names
 
@@ -862,6 +864,218 @@ def run_fuzzy_scan(username, platforms, proxy=None, tor=False, threads=10, timeo
     else:
         console.print("[yellow][*] No fuzzy matches found.[/yellow]")
 
+def parse_metadata_github(soup):
+    return {
+        "display_name": soup.find("span", {"itemprop": "name"}).get_text(strip=True) if soup.find("span", {"itemprop": "name"}) else "N/A",
+        "bio": soup.find("div", class_="user-profile-bio").get_text(strip=True) if soup.find("div", class_="user-profile-bio") else "N/A",
+        "location": soup.find("li", {"itemprop": "homeLocation"}).get_text(strip=True) if soup.find("li", {"itemprop": "homeLocation"}) else "N/A",
+        "followers": soup.find("a", href=lambda x: x and x.endswith("?tab=followers")).get_text(strip=True) if soup.find("a", href=lambda x: x and x.endswith("?tab=followers")) else "N/A",
+        "following": soup.find("a", href=lambda x: x and x.endswith("?tab=following")).get_text(strip=True) if soup.find("a", href=lambda x: x and x.endswith("?tab=following")) else "N/A",
+        "posts": "N/A",
+        "profile_image_url": soup.find("img", class_="avatar-user")["src"] if soup.find("img", class_="avatar-user") else "N/A",
+        "joined_date": soup.find("div", class_="js-profile-editable-area").find("div", class_="p-note user-profile-bio mb-3 js-user-profile-bio f4").get_text(strip=True) if soup.find("div", class_="js-profile-editable-area") and soup.find("div", class_="js-profile-editable-area").find("div", class_="p-note user-profile-bio mb-3 js-user-profile-bio f4") else "N/A",
+        "verified_status": "N/A"
+    }
+
+def parse_metadata_twitter(soup):
+    return {
+        "display_name": soup.find("div", {"data-testid": "UserName"}).get_text(strip=True) if soup.find("div", {"data-testid": "UserName"}) else "N/A",
+        "bio": soup.find("div", {"data-testid": "UserDescription"}).get_text(strip=True) if soup.find("div", {"data-testid": "UserDescription"}) else "N/A",
+        "location": soup.find("span", {"data-testid": "UserLocation"}).get_text(strip=True) if soup.find("span", {"data-testid": "UserLocation"}) else "N/A",
+        "followers": soup.find("a", href=lambda x: x and "/followers" in x).get_text(strip=True) if soup.find("a", href=lambda x: x and "/followers" in x) else "N/A",
+        "following": soup.find("a", href=lambda x: x and "/following" in x).get_text(strip=True) if soup.find("a", href=lambda x: x and "/following" in x) else "N/A",
+        "posts": "N/A",
+        "profile_image_url": soup.find("img", {"alt": "Image"}).get("src") if soup.find("img", {"alt": "Image"}) else "N/A",
+        "joined_date": soup.find("span", string=lambda x: x and "Joined" in x).get_text(strip=True) if soup.find("span", string=lambda x: x and "Joined" in x) else "N/A",
+        "verified_status": "Yes" if soup.find("svg", {"data-testid": "verificationBadge"}) else "No"
+    }
+
+def parse_metadata_instagram(soup):
+    meta = lambda prop: soup.find("meta", property=prop)
+    return {
+        "display_name": meta("og:title")["content"] if meta("og:title") else "N/A",
+        "bio": meta("og:description")["content"] if meta("og:description") else "N/A",
+        "location": "N/A",
+        "followers": "N/A",
+        "following": "N/A",
+        "posts": "N/A",
+        "profile_image_url": meta("og:image")["content"] if meta("og:image") else "N/A",
+        "joined_date": "N/A",
+        "verified_status": "N/A"
+    }
+
+def parse_metadata_default(soup):
+    return {
+        "display_name": "N/A",
+        "bio": "N/A",
+        "location": "N/A",
+        "followers": "N/A",
+        "following": "N/A",
+        "posts": "N/A",
+        "profile_image_url": "N/A",
+        "joined_date": "N/A",
+        "verified_status": "N/A"
+    }
+
+PLATFORM_METADATA_PARSERS = {
+    "GitHub": parse_metadata_github,
+    "Twitter": parse_metadata_twitter,
+    "Instagram": parse_metadata_instagram,
+}
+
+async def fetch_metadata(session, platform, url):
+    try:
+        headers = {"User-Agent": get_random_user_agent()}
+        async with session.get(url, timeout=15, headers=headers) as resp:
+            html = await resp.text()
+            soup = BeautifulSoup(html, "html.parser")
+            parser = PLATFORM_METADATA_PARSERS.get(platform, parse_metadata_default)
+            meta = parser(soup)
+            return (platform, meta)
+    except Exception:
+        return (platform, None)
+
+async def extract_metadata_async(platform_url_pairs, concurrency=3):
+    results = []
+    sem = asyncio.Semaphore(concurrency)
+    async with aiohttp.ClientSession() as session:
+        async def sem_fetch(platform, url):
+            async with sem:
+                return await fetch_metadata(session, platform, url)
+        tasks = [sem_fetch(platform, url) for platform, url in platform_url_pairs]
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
+            results.append(result)
+    return results
+
+def display_metadata_table(meta_results):
+    """
+    Display metadata extraction results in a clean vertical table per account.
+    Each account/platform is shown as a block with field/value pairs.
+    """
+    console = Console()
+    if not meta_results:
+        console.print("[yellow][*] No metadata results to display.[/yellow]")
+        return
+
+    for platform, meta in meta_results:
+        console.print(f"\n[bold magenta]Platform:[/bold magenta] [cyan]{platform}[/cyan]")
+        if meta is None:
+            console.print("[red]  [-] Failed to retrieve metadata[/red]")
+            continue
+        table = RichTable(show_header=False, box=box.SIMPLE, expand=False, padding=(0,1))
+        table.add_row("[bold]Display Name[/bold]", meta.get("display_name", "N/A"))
+        table.add_row("[bold]Bio[/bold]", meta.get("bio", "N/A"))
+        table.add_row("[bold]Location[/bold]", meta.get("location", "N/A"))
+        table.add_row("[bold]Followers[/bold]", meta.get("followers", "N/A"))
+        table.add_row("[bold]Following[/bold]", meta.get("following", "N/A"))
+        table.add_row("[bold]Posts[/bold]", meta.get("posts", "N/A"))
+        table.add_row("[bold]Joined[/bold]", meta.get("joined_date", "N/A"))
+        table.add_row("[bold]Verified[/bold]", meta.get("verified_status", "N/A"))
+        table.add_row("[bold]Profile Image URL[/bold]", meta.get("profile_image_url", "N/A"))
+        console.print(table)
+    print()  # Extra newline after all blocks
+
+def prompt_custom_urls():
+    urls = []
+    while True:
+        custom = input("[?] Add custom platform URL to check? Enter URL or 'n' for none: ").strip()
+        if custom.lower() == "n":
+            break
+        elif custom:
+            urls.append(custom)
+        else:
+            print(Colors.RED + "[!] Please enter a valid URL or 'n' for none." + Colors.RESET)
+    return urls
+
+def prompt_platform_selection(platforms):
+    selected = []
+    for p in platforms:
+        while True:
+            ans = input(f"Extract metadata from {p}? [y/n]: ").strip().lower()
+            if ans == "y":
+                selected.append(p)
+                break
+            elif ans == "n":
+                break
+            else:
+                print(Colors.RED + "[!] Invalid choice. Type 'y' for yes or 'n' for no." + Colors.RESET)
+    return selected
+
+def run_metadata_extraction(confirmed_hits, platforms):
+    count = len(confirmed_hits)
+    platform_url_pairs = [(p, url) for p, url in confirmed_hits.items()]
+    # Interactive logic
+    if count <= 5:
+        print(Colors.GREEN + f"[+] Metadata extraction detected for up to {count} platforms." + Colors.RESET)
+        ans = input("Do you want to add extra custom platform URL(s) to check? [y/n]: ").strip().lower()
+        custom_urls = []
+        if ans == "y":
+            custom_urls = prompt_custom_urls()
+        for url in custom_urls:
+            platform_url_pairs.append((url, url))
+    else:
+        print(Colors.YELLOW + "[-] Metadata extraction may take extra time depending on platform speed and rate limits." + Colors.RESET)
+        ans = input("Proceed with all platforms? [y/n]: ").strip().lower()
+        if ans == "y":
+            pass  # use all
+        else:
+            selected = prompt_platform_selection(list(confirmed_hits.keys()))
+            platform_url_pairs = [(p, confirmed_hits[p]) for p in selected]
+            custom_urls = prompt_custom_urls()
+            for url in custom_urls:
+                platform_url_pairs.append((url, url))
+    print(Colors.MAGENTA + "\n[+] Starting metadata extraction...\n" + Colors.RESET)
+    # Run asyncio event loop for metadata extraction
+    loop = asyncio.get_event_loop()
+    meta_results = loop.run_until_complete(extract_metadata_async(platform_url_pairs))
+    display_metadata_table(meta_results)
+
+def run_metadata_extraction_interactive(confirmed_hits, platforms):
+    count = len(confirmed_hits)
+    platform_url_pairs = []
+    custom_urls = []
+
+    if count == 0:
+        print(Colors.YELLOW + "[*] No confirmed accounts to extract metadata from." + Colors.RESET)
+        return
+
+    if count <= 5:
+        print(Colors.GREEN + f"[+] Metadata extraction detected for up to {count} platforms." + Colors.RESET)
+        while True:
+            ans = input("Do you want to add extra custom platform URL(s) to check? [y/n]: ").strip().lower()
+            if ans == "y":
+                custom_urls = prompt_custom_urls()
+                break
+            elif ans == "n":
+                break
+            else:
+                print(Colors.RED + "[!] Invalid choice. Type 'y' for yes or 'n' to cancel." + Colors.RESET)
+        platform_url_pairs = [(p, url) for p, url in confirmed_hits.items()]
+        for url in custom_urls:
+            platform_url_pairs.append((url, url))
+    else:
+        print(Colors.YELLOW + "[-] Metadata extraction may take extra time depending on platform speed and rate limits." + Colors.RESET)
+        while True:
+            ans = input("Proceed with all platforms? [y/n]: ").strip().lower()
+            if ans == "y":
+                platform_url_pairs = [(p, url) for p, url in confirmed_hits.items()]
+                break
+            elif ans == "n":
+                selected = prompt_platform_selection(list(confirmed_hits.keys()))
+                platform_url_pairs = [(p, confirmed_hits[p]) for p in selected]
+                custom_urls = prompt_custom_urls()
+                for url in custom_urls:
+                    platform_url_pairs.append((url, url))
+                break
+            else:
+                print(Colors.RED + "[!] Invalid choice. Type 'y' for yes or 'n' to cancel." + Colors.RESET)
+
+    print(Colors.MAGENTA + "\n[+] Starting metadata extraction...\n" + Colors.RESET)
+    loop = asyncio.get_event_loop()
+    meta_results = loop.run_until_complete(extract_metadata_async(platform_url_pairs))
+    display_metadata_table(meta_results)
+
 def main():
     parser = argparse.ArgumentParser(description="USRLINKS - OSINT Username Hunter")
     parser.add_argument("-u", "--username", help="Target username to scan", required=False)
@@ -876,7 +1090,8 @@ def main():
     parser.add_argument("-f", "--fuzzy", action="store_true", help="Run advanced fuzzy username scan after normal scan")
     parser.add_argument("--fuzzy-all", action="store_true", help="(Dangerous) Fuzz all platforms without prompt")
     parser.add_argument("-r", "--retry", action="store_true", help="Retry failed requests after normal scan")
-    
+    parser.add_argument("-m", "--metadata", action="store_true", help="Enable profile metadata extraction for confirmed accounts after scan.")
+
     args = parser.parse_args()
     platforms = load_platforms(args.platforms)
 
@@ -949,6 +1164,11 @@ def main():
 
     if args.output:
         save_results(results, args.username, args.output)
+
+    # Metadata extraction logic (interactive, after showing results)
+    if getattr(args, "metadata", False):
+        confirmed_hits = {r["platform"]: r["url"] for r in results if r["available"] is False}
+        run_metadata_extraction_interactive(confirmed_hits, platforms)
 
     # Fuzzy scan last if requested
     if args.fuzzy:
