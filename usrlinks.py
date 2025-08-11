@@ -1073,7 +1073,7 @@ def run_metadata_extraction_interactive(confirmed_hits, platforms):
 
     print(Colors.MAGENTA + "\n[+] Starting metadata extraction...\n" + Colors.RESET)
     loop = asyncio.get_event_loop()
-    meta_results = loop.run_until_complete(extract_metadata_async(platform_url_pairs))
+    meta_results = asyncio.run(extract_metadata_async(platform_url_pairs))
     display_metadata_table(meta_results)
 
 def main():
