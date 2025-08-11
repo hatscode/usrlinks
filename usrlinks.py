@@ -719,7 +719,29 @@ def generate_username_variants(username):
 
     # Remove original username and deduplicate
     variants.discard(username)
-    return list(set(variants))
+    # Start with initial username
+    queue.append(username)
+    seen = set([username])
+
+    # Apply transformations breadth-first, limit depth to avoid exponential blowup
+    max_depth = 2
+    depth = 0
+    while queue and depth < max_depth:
+        next_queue = deque()
+        while queue:
+            current = queue.popleft()
+            for func in (leetify, underscore_dot_variants, duplicate_letters, swap_adjacent, add_numbers):
+                for v in func(current):
+                    if v not in seen:
+                        variants.add(v)
+                        next_queue.append(v)
+                        seen.add(v)
+        queue = next_queue
+        depth += 1
+
+    # Remove original username and deduplicate
+    variants.discard(username)
+    return list(variants)
 
 def run_fuzzy_scan(username, platforms, proxy=None, tor=False, threads=10, timeout=15, deep_scan=False, fuzzy_all=False):
     console = Console()
