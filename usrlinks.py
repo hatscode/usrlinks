@@ -1078,7 +1078,7 @@ def run_metadata_extraction_interactive(confirmed_hits, platforms):
 
 def main():
     parser = argparse.ArgumentParser(description="USRLINKS - OSINT Username Hunter")
-    parser.add_argument("-u", "--username", help="Target username to scan", required=False)
+    parser.add_argument("-u", "--username", help="Target username to scan", required=True)
     parser.add_argument("-p", "--proxy", help="HTTP/SOCKS proxy (e.g., http://127.0.0.1:8080)")
     parser.add_argument("-t", "--tor", action="store_true", help="Use Tor for anonymity")
     parser.add_argument("-th", "--threads", type=int, default=10, help="Number of threads (default: 10)")
