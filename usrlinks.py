@@ -1030,7 +1030,7 @@ def run_metadata_extraction(confirmed_hits, platforms):
     loop = asyncio.get_event_loop()
     meta_results = asyncio.run(extract_metadata_async(platform_url_pairs))
     display_metadata_table(meta_results)
-
+# (Function run_metadata_extraction removed as it was unused and duplicated logic.)
 def run_metadata_extraction_interactive(confirmed_hits, platforms):
     count = len(confirmed_hits)
     platform_url_pairs = []
