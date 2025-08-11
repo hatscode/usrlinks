@@ -1167,7 +1167,7 @@ def main():
 
     # Metadata extraction logic (interactive, after showing results)
     if getattr(args, "metadata", False):
-        confirmed_hits = {r["platform"]: r["url"] for r in results if r["available"] is False}
+        confirmed_hits = {r["platform"]: r["url"] for r in results if r["available"] is False or (r["available"] is None and r.get("url"))}
         run_metadata_extraction_interactive(confirmed_hits, platforms)
 
     # Fuzzy scan last if requested
