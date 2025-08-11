@@ -873,7 +873,7 @@ def parse_metadata_github(soup):
         "following": soup.find("a", href=lambda x: x and x.endswith("?tab=following")).get_text(strip=True) if soup.find("a", href=lambda x: x and x.endswith("?tab=following")) else "N/A",
         "posts": "N/A",
         "profile_image_url": soup.find("img", class_="avatar-user")["src"] if soup.find("img", class_="avatar-user") else "N/A",
-        "joined_date": soup.find("div", class_="js-profile-editable-area").find("div", class_="p-note user-profile-bio mb-3 js-user-profile-bio f4").get_text(strip=True) if soup.find("div", class_="js-profile-editable-area") and soup.find("div", class_="js-profile-editable-area").find("div", class_="p-note user-profile-bio mb-3 js-user-profile-bio f4") else "N/A",
+        "joined_date": soup.find("li", {"itemprop": "dateJoined"}).get_text(strip=True) if soup.find("li", {"itemprop": "dateJoined"}) else "N/A",
         "verified_status": "N/A"
     }
 
