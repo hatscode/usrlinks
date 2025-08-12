@@ -38,28 +38,6 @@ This repository maintains a clear separation between different implementation ap
 3. **Collaboration**: Easy to share with teams
 4. **Real-time**: Live updates and progress tracking
 
-## Contributing Guidelines
-
-### To Main Branch (Terminal)
-```bash
-# Clone and work on terminal features
-git clone https://github.com/stilla1ex/usrlinks.git
-cd usrlinks
-git checkout main
-# Make your terminal-focused changes
-git checkout -b feature/your-terminal-enhancement
-```
-
-### To Web Version Branch
-```bash
-# Clone and work on web features
-git clone https://github.com/stilla1ex/usrlinks.git
-cd usrlinks
-git checkout -b web-version origin/web-version  # If exists, or create new
-# Make your web-focused changes
-git checkout -b feature/your-web-enhancement
-```
-
 ## Pull Request Guidelines
 
 ### For Main Branch (Terminal)
@@ -86,18 +64,3 @@ As the project maintainer, you can:
 2. **Set branch protection**: Require reviews for main branch
 3. **Use PR templates**: Guide contributors to the right branch
 4. **Community governance**: Let community maintain web branch if desired
-
-## Example Response to Web-Based PR
-
-```
-Thank you for your contribution! However, this repository maintains a terminal-first 
-approach on the main branch. 
-
-Your web-based enhancements would be perfect for the `web-version` branch. Please:
-
-1. Change your PR target from `main` to `web-version`
-2. Or let me know and I can redirect it for you
-3. Ensure your changes don't modify core terminal functionality
-
-This helps us maintain both approaches for different user needs.
-```
