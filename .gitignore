@@ -1,0 +1,33 @@
+# Log files
+*.log
+usrlinks.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+test_env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Output files
+USRLINKS_*.csv
+USRLINKS_*.json
+
+# Results directory (keep structure but ignore contents)
+results/*.html
+results/*.csv
+results/*.json
+!results/.gitkeep
