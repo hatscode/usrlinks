@@ -4,3 +4,6 @@ fake_useragent
 tqdm
 dnspython
 tabulate  # used for summary tables
+rapidfuzz  # for fuzzy string matching
+rich       # for enhanced console output
+aiohttp    # for asynchronous HTTP requests

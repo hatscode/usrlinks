@@ -1,0 +1,20 @@
+[
+  {
+    "name": "GitHub",
+    "url": "https://github.com/{username}",
+    "errorType": "status_code",
+    "valid": true,
+    "availableStatusCode": 404,
+    "takenStatusCode": 200,
+    "profile": true
+  },
+  {
+    "name": "Twitter",
+    "url": "https://twitter.com/{username}",
+    "errorType": "status_code",
+    "valid": true,
+    "availableStatusCode": 404,
+    "takenStatusCode": 200,
+    "profile": true
+  }
+]
