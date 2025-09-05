@@ -91,31 +91,31 @@ cat > "$HTML_FILE" << EOF
         body {
             font-family: 'Arial', sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #e0e0e0;
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
             min-height: 100vh;
         }
         .container {
-            background: white;
+            background: #333;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             padding: 30px;
         }
         .header {
             text-align: center;
             margin-bottom: 30px;
             padding: 20px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
+            background: linear-gradient(45deg, #444, #555);
+            color: #fff;
             border-radius: 10px;
         }
         .header h1 {
             margin: 0;
             font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         .summary {
             display: grid;
@@ -124,11 +124,12 @@ cat > "$HTML_FILE" << EOF
             margin: 20px 0;
         }
         .summary-card {
-            background: #f8f9fa;
+            background: #444;
             padding: 15px;
             border-radius: 8px;
             text-align: center;
             border-left: 4px solid #667eea;
+            color: #e0e0e0;
         }
         .summary-number {
             font-size: 2em;
@@ -139,20 +140,20 @@ cat > "$HTML_FILE" << EOF
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
         .results-table th,
         .results-table td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #555;
         }
         .results-table th {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
+            background: linear-gradient(45deg, #444, #555);
+            color: #fff;
         }
         .results-table tr:hover {
-            background-color: #f5f5f5;
+            background-color: #444;
         }
         .status-available {
             color: #28a745;
@@ -169,17 +170,18 @@ cat > "$HTML_FILE" << EOF
         .recon-section {
             margin: 20px 0;
             padding: 20px;
-            background: #f8f9fa;
+            background: #444;
             border-radius: 8px;
             border-left: 4px solid #28a745;
+            color: #e0e0e0;
         }
         .footer {
             text-align: center;
             margin-top: 30px;
             padding: 20px;
-            background: #f8f9fa;
+            background: #444;
             border-radius: 8px;
-            color: #666;
+            color: #aaa;
         }
         .url-link {
             color: #667eea;
@@ -189,11 +191,12 @@ cat > "$HTML_FILE" << EOF
             text-decoration: underline;
         }
         .recon-item {
-            background: white;
+            background: #333;
             margin: 10px 0;
             padding: 15px;
             border-radius: 5px;
             border-left: 3px solid #17a2b8;
+            color: #e0e0e0;
         }
     </style>
 </head>

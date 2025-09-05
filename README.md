@@ -1,64 +1,25 @@
-<img width="1023" height="614" alt="image" src="https://github.com/user-attachments/assets/d7d74273-e552-426b-a15d-7241193950e2" />
+USRLINKS
+========
 
-## Supported Platforms
+USRLINKS is a command-line tool for checking username availability and gathering public profile data across multiple platforms.
 
-Major Social Networks: GitHub, Twitter, Instagram, LinkedIn, TikTok, Facebook, Reddit, YouTube, Twitch
-Professional: LinkedIn, GitHub, GitLab, Bitbucket, HackerNews, Medium
-Media & Creative: Instagram, YouTube, TikTok, Vimeo, SoundCloud, DeviantArt, Pinterest
-Gaming: Steam, Twitch, Roblox
-Communication: Telegram, Discord, Skype
-Marketplaces: Etsy, eBay
-And 80+ more platforms.
-
-
-
-
-# USRLINKS - Advanced OSINT Username Hunter
-
-USRLINKS is a comprehensive Python reconnaissance tool that checks username availability across 100+ social media platforms and performs deep OSINT intelligence gathering. The tool features both command-line interface and web-based functionality, designed for security professionals, penetration testers, and OSINT investigators.
-
-USRLINKS provides flexible deployment options with both terminal-based scanning and web interface capabilities for maximum portability, security, and integration with existing OSINT workflows. Reports are generated in multiple formats including HTML, JSON, and CSV for easy sharing and documentation.
-
-## Features
-
-### Core Functionality
-- 100+ Platform Coverage: Scan username availability across major social networks, forums, and platforms
-- Deep Reconnaissance: Extract emails, phone numbers, locations, and bio information from profiles
-- Profile Intelligence: Analyze profile images with hash generation for cross-platform correlation
-- Google Dorks Generator: Automatically generate targeted search queries for enhanced OSINT
-- Advanced Reporting: Beautiful HTML reports with interactive tables and reconnaissance data
-- Export Options: CSV and JSON formats for data analysis and integration
-
-### Technical Features
-- Multi-threaded Scanning: Fast concurrent processing for efficient reconnaissance
-- Proxy & Tor Support: Anonymous scanning with SOCKS/HTTP proxy support
-- Retry Logic: Intelligent retry mechanisms for failed requests
-- User Agent Rotation: Anti-detection measures with randomized headers
-- Platform-Specific Detection: Custom logic for accurate availability detection
-- Web Interface: Browser-based interface for ease of use and accessibility
-- Command Line Interface: Terminal-based operation for automation and scripting
-
-## Installation
-
+**Install:**
 ```bash
-git clone https://github.com/stilla1ex/usrlinks.git
+git clone https://github.com/wh1t3h4ts/usrlinks.git
 cd usrlinks
 pip install -r requirements.txt
 chmod +x usrlinks.sh
 ```
 
-## Quick Start
-
-### Simple Launcher (Recommended)
-The easiest way to use USRLINKS with automatic HTML report generation:
-
+**Usage:**
 ```bash
-# Basic scan with HTML report
-./usrlinks.sh -u john_doe
+./usrlinks.sh -u username [options]
+```
+Options include `--deep-scan`, `--list-platforms`, and `--generate-dorks`.
 
-# Deep scan with reconnaissance data
-./usrlinks.sh -u john_doe --deep-scan
+Results are saved in the `results/` directory.
 
+Supported platforms are listed in `config/platforms.json`.
 # List all supported platforms
 ./usrlinks.sh --list-platforms
 ```
