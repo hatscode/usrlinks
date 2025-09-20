@@ -1,20 +1,51 @@
-[
-  {
-    "name": "GitHub",
+{
+  "GitHub": {
     "url": "https://github.com/{username}",
-    "errorType": "status_code",
-    "valid": true,
-    "availableStatusCode": 404,
-    "takenStatusCode": 200,
-    "profile": true
+    "method": "status_code",
+    "code": [404],
+    "recon_enabled": true,
+    "api_endpoint": "https://api.github.com/users/{username}"
   },
-  {
-    "name": "Twitter",
+  "Twitter": {
     "url": "https://twitter.com/{username}",
-    "errorType": "status_code",
-    "valid": true,
-    "availableStatusCode": 404,
-    "takenStatusCode": 200,
-    "profile": true
+    "method": "response_text",
+    "error_msg": ["doesn't exist", "404"],
+    "recon_enabled": true
+  },
+  "Instagram": {
+    "url": "https://instagram.com/{username}",
+    "method": "status_code", 
+    "code": [404],
+    "recon_enabled": true
+  },
+  "Reddit": {
+    "url": "https://reddit.com/user/{username}",
+    "method": "status_code",
+    "code": [404],
+    "recon_enabled": true
+  },
+  "LinkedIn": {
+    "url": "https://linkedin.com/in/{username}",
+    "method": "status_code",
+    "code": [404],
+    "recon_enabled": true
+  },
+  "TikTok": {
+    "url": "https://tiktok.com/@{username}",
+    "method": "response_text",
+    "error_msg": ["Couldn't find this account"],
+    "recon_enabled": false
+  },
+  "YouTube": {
+    "url": "https://youtube.com/{username}",
+    "method": "response_text", 
+    "error_msg": ["This channel does not exist"],
+    "recon_enabled": false
+  },
+  "Twitch": {
+    "url": "https://twitch.tv/{username}",
+    "method": "status_code",
+    "code": [404],
+    "recon_enabled": false
   }
-]
+}

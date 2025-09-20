@@ -1,49 +1,51 @@
 #!/usr/bin/env python3
 """
 USRLINKS - Advanced OSINT Username Hunter
-Terminal-based tool to check username availability across 100+ platforms.
 
-This is intentionally designed as a command-line tool for:
-- Maximum portability and security
-- Integration with existing OSINT workflows  
-- Use in penetration testing environments
-- Automation and batch processing
-
-Web-based interfaces are maintained separately on the 'web-ui' branch.
+A comprehensive tool for checking username availability and gathering
+public profile data across multiple platforms.
 """
 
+import asyncio
+import argparse
+import csv
+import hashlib
+import itertools
+import json
+import logging
 import os
+import random
+import re
 import sys
 import time
-import json
-import csv
-import random
-import argparse
-import re
-import hashlib
+from collections import deque
 from datetime import datetime
 from urllib.parse import urlparse
+
+import aiohttp
 import requests
-from requests.adapters import HTTPAdapter, Retry
 from bs4 import BeautifulSoup
-from tqdm import tqdm
-import logging
-import itertools
 from rapidfuzz import fuzz
+from requests.adapters import HTTPAdapter, Retry
+from rich import box
 from rich.console import Console
 from rich.table import Table as RichTable
-from rich import box
-import asyncio
-import aiohttp
+from tqdm import tqdm
 
-# try exception block
+# Optional dependencies
 try:
     from fake_useragent import UserAgent
     FAKE_UA_AVAILABLE = True
 except ImportError:
     FAKE_UA_AVAILABLE = False
 
-  # --- Logging Setup ----
+try:
+    from tabulate import tabulate
+    TABULATE_AVAILABLE = True
+except ImportError:
+    TABULATE_AVAILABLE = False
+
+# --- Logging Setup ---
 logging.basicConfig(
     filename="usrlinks.log",
     level=logging.INFO,
@@ -52,8 +54,9 @@ logging.basicConfig(
 
 
 
-# --- Styling & Terminal UI ---
+# --- Constants and Configuration ---
 class Colors:
+    """ANSI color codes for terminal output."""
     RED = "\033[1;31m"
     GREEN = "\033[1;32m"
     YELLOW = "\033[1;33m"
@@ -68,15 +71,26 @@ class Colors:
     PROGRESS_TEXT = "\033[1;36m"
     ERROR = "\033[1;31m"
 
+
+FALLBACK_UA_LIST = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+]
+
 class Table:
+    """Simple table formatter for terminal output."""
+    
     def __init__(self, headers):
         self.headers = headers
         self.rows = []
     
     def add_row(self, row):
+        """Add a row to the table."""
         self.rows.append(row)
     
     def display(self):
+        """Display the table with proper formatting."""
         col_widths = [len(header) for header in self.headers]
         for row in self.rows:
             for i, cell in enumerate(row):
@@ -97,6 +111,8 @@ class Table:
 
 # --- Enhanced Reconnaissance Class ---
 class EnhancedRecon:
+    """Advanced reconnaissance module for extracting profile information."""
+    
     def __init__(self, session):
         self.session = session
         self.email_patterns = [
@@ -113,7 +129,7 @@ class EnhancedRecon:
         ]
 
     def extract_contact_info(self, soup, url):
-        """Extract email addresses and phone numbers from profile pages"""
+        """Extract email addresses and phone numbers from profile pages."""
         contact_info = {
             'emails': [],
             'phones': [],
@@ -150,7 +166,7 @@ class EnhancedRecon:
         return contact_info
 
     def _extract_platform_specific(self, soup, url):
-        """Extract platform-specific information"""
+        """Extract platform-specific information."""
         info = {'location': None, 'bio': None, 'name': None, 'verified': False}
         
         if 'github.com' in url:
@@ -165,7 +181,7 @@ class EnhancedRecon:
         return info
 
     def _extract_github_info(self, soup):
-        """Extract GitHub-specific information"""
+        """Extract GitHub-specific information."""
         info = {}
         
         # Location
@@ -186,7 +202,7 @@ class EnhancedRecon:
         return info
 
     def _extract_twitter_info(self, soup):
-        """Extract Twitter/X-specific information"""
+        """Extract Twitter/X-specific information."""
         info = {}
         
         # Bio
@@ -206,7 +222,7 @@ class EnhancedRecon:
         return info
 
     def _extract_instagram_info(self, soup):
-        """Extract Instagram-specific information"""
+        """Extract Instagram-specific information."""
         info = {}
         
         # Bio (Instagram stores bio in meta tags)
@@ -217,7 +233,7 @@ class EnhancedRecon:
         return info
 
     def _extract_linkedin_info(self, soup):
-        """Extract LinkedIn-specific information"""
+        """Extract LinkedIn-specific information."""
         info = {}
         
         # Location
@@ -228,7 +244,7 @@ class EnhancedRecon:
         return info
 
     def extract_profile_image(self, soup, url):
-        """Extract profile image URL and generate hash"""
+        """Extract profile image URL and generate hash."""
         profile_image_info = {
             'url': None,
             'hash': None,
@@ -262,7 +278,7 @@ class EnhancedRecon:
         return profile_image_info
 
     def _generate_image_hash(self, img_url):
-        """Generate hash of profile image for comparison"""
+        """Generate hash of profile image for comparison."""
         try:
             response = self.session.get(img_url, timeout=10)
             if response.status_code == 200:
@@ -272,7 +288,7 @@ class EnhancedRecon:
         return None
 
     def generate_google_dorks(self, username):
-        """Generate Google search dorks for the username"""
+        """Generate Google search dorks for the username."""
         dorks = [
             f'"{username}"',
             f'"{username}" site:pastebin.com',
@@ -288,7 +304,7 @@ class EnhancedRecon:
         return dorks
 
 def load_platforms(config_path=None):
-    """Load platforms from JSON file or use built-in."""
+    """Load platforms from JSON file or use built-in configuration."""
     if config_path and os.path.isfile(config_path):
         with open(config_path, "r") as f:
             return json.load(f)
@@ -326,40 +342,135 @@ def load_platforms(config_path=None):
             "code": [404],
             "recon_enabled": True
         },
-        "TikTok": {"url": "https://tiktok.com/@{}", "method": "response_text", "error_msg": ["Couldn't find this account"]},
-        "YouTube": {"url": "https://youtube.com/{}", "method": "response_text", "error_msg": ["This channel does not exist"]},
-        "Twitch": {"url": "https://twitch.tv/{}", "method": "status_code", "code": [404]},
-        "Facebook": {"url": "https://facebook.com/{}", "method": "response_text", "error_msg": ["This page isn't available"]},
-        "Pinterest": {"url": "https://pinterest.com/{}", "method": "response_text", "error_msg": ["Sorry, we couldn't find that page"]},
-        "Steam": {"url": "https://steamcommunity.com/id/{}", "method": "response_text", "error_msg": ["The specified profile could not be found"]},
-        "Vimeo": {"url": "https://vimeo.com/{}", "method": "response_text", "error_msg": ["Sorry, we couldn't find that user"]},
-        "SoundCloud": {"url": "https://soundcloud.com/{}", "method": "response_text", "error_msg": ["Oops! We can't find that track"]},
-        "Medium": {"url": "https://medium.com/@{}", "method": "response_text", "error_msg": ["404"]},
-        "DeviantArt": {"url": "https://{}.deviantart.com", "method": "response_text", "error_msg": ["404"]},
-        "GitLab": {"url": "https://gitlab.com/{}", "method": "status_code", "code": [404]},
-        "Bitbucket": {"url": "https://bitbucket.org/{}", "method": "status_code", "code": [404]},
-        "Keybase": {"url": "https://keybase.io/{}", "method": "status_code", "code": [404]},
-        "HackerNews": {"url": "https://news.ycombinator.com/user?id={}", "method": "response_text", "error_msg": ["No such user"]},
-        "CodePen": {"url": "https://codepen.io/{}", "method": "response_text", "error_msg": ["Sorry, couldn't find that pen"]},
-        "Telegram": {"url": "https://t.me/{}", "method": "response_text", "error_msg": ["Telegram channel not found"]},
-        "Tumblr": {"url": "https://{}.tumblr.com", "method": "response_text", "error_msg": ["Nothing here"]},
-        "Spotify": {"url": "https://open.spotify.com/user/{}", "method": "response_text", "error_msg": ["Couldn't find that user"]},
-        "Last.fm": {"url": "https://last.fm/user/{}", "method": "response_text", "error_msg": ["Page not found"]},
-        "Roblox": {"url": "https://www.roblox.com/user.aspx?username={}", "method": "response_text", "error_msg": ["404"]},
-        "Quora": {"url": "https://www.quora.com/profile/{}", "method": "response_text", "error_msg": ["Oops! The page you were looking for doesn't exist"]},
-        "VK": {"url": "https://vk.com/{}", "method": "response_text", "error_msg": ["404"]},
-        "Imgur": {"url": "https://imgur.com/user/{}", "method": "response_text", "error_msg": ["404"]},
-        "Etsy": {"url": "https://www.etsy.com/shop/{}", "method": "response_text", "error_msg": ["404"]},
-        "Pastebin": {"url": "https://pastebin.com/u/{}", "method": "response_text", "error_msg": ["404"]},
+        "TikTok": {
+            "url": "https://tiktok.com/@{}",
+            "method": "response_text",
+            "error_msg": ["Couldn't find this account"]
+        },
+        "YouTube": {
+            "url": "https://youtube.com/{}",
+            "method": "response_text",
+            "error_msg": ["This channel does not exist"]
+        },
+        "Twitch": {
+            "url": "https://twitch.tv/{}",
+            "method": "status_code",
+            "code": [404]
+        },
+        "Facebook": {
+            "url": "https://facebook.com/{}",
+            "method": "response_text",
+            "error_msg": ["This page isn't available"]
+        },
+        "Pinterest": {
+            "url": "https://pinterest.com/{}",
+            "method": "response_text",
+            "error_msg": ["Sorry, we couldn't find that page"]
+        },
+        "Steam": {
+            "url": "https://steamcommunity.com/id/{}",
+            "method": "response_text",
+            "error_msg": ["The specified profile could not be found"]
+        },
+        "Vimeo": {
+            "url": "https://vimeo.com/{}",
+            "method": "response_text",
+            "error_msg": ["Sorry, we couldn't find that user"]
+        },
+        "SoundCloud": {
+            "url": "https://soundcloud.com/{}",
+            "method": "response_text",
+            "error_msg": ["Oops! We can't find that track"]
+        },
+        "Medium": {
+            "url": "https://medium.com/@{}",
+            "method": "response_text",
+            "error_msg": ["404"]
+        },
+        "DeviantArt": {
+            "url": "https://{}.deviantart.com",
+            "method": "response_text",
+            "error_msg": ["404"]
+        },
+        "GitLab": {
+            "url": "https://gitlab.com/{}",
+            "method": "status_code",
+            "code": [404]
+        },
+        "Bitbucket": {
+            "url": "https://bitbucket.org/{}",
+            "method": "status_code",
+            "code": [404]
+        },
+        "Keybase": {
+            "url": "https://keybase.io/{}",
+            "method": "status_code",
+            "code": [404]
+        },
+        "HackerNews": {
+            "url": "https://news.ycombinator.com/user?id={}",
+            "method": "response_text",
+            "error_msg": ["No such user"]
+        },
+        "CodePen": {
+            "url": "https://codepen.io/{}",
+            "method": "response_text",
+            "error_msg": ["Sorry, couldn't find that pen"]
+        },
+        "Telegram": {
+            "url": "https://t.me/{}",
+            "method": "response_text",
+            "error_msg": ["Telegram channel not found"]
+        },
+        "Tumblr": {
+            "url": "https://{}.tumblr.com",
+            "method": "response_text",
+            "error_msg": ["Nothing here"]
+        },
+        "Spotify": {
+            "url": "https://open.spotify.com/user/{}",
+            "method": "response_text",
+            "error_msg": ["Couldn't find that user"]
+        },
+        "Last.fm": {
+            "url": "https://last.fm/user/{}",
+            "method": "response_text",
+            "error_msg": ["Page not found"]
+        },
+        "Roblox": {
+            "url": "https://www.roblox.com/user.aspx?username={}",
+            "method": "response_text",
+            "error_msg": ["404"]
+        },
+        "Quora": {
+            "url": "https://www.quora.com/profile/{}",
+            "method": "response_text",
+            "error_msg": ["Oops! The page you were looking for doesn't exist"]
+        },
+        "VK": {
+            "url": "https://vk.com/{}",
+            "method": "response_text",
+            "error_msg": ["404"]
+        },
+        "Imgur": {
+            "url": "https://imgur.com/user/{}",
+            "method": "response_text",
+            "error_msg": ["404"]
+        },
+        "Etsy": {
+            "url": "https://www.etsy.com/shop/{}",
+            "method": "response_text",
+            "error_msg": ["404"]
+        },
+        "Pastebin": {
+            "url": "https://pastebin.com/u/{}",
+            "method": "response_text",
+            "error_msg": ["404"]
+        },
     }
 
-FALLBACK_UA_LIST = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-]
-
 def get_random_user_agent():
+    """Get a random user agent string."""
     if FAKE_UA_AVAILABLE:
         try:
             return UserAgent().random
@@ -367,7 +478,9 @@ def get_random_user_agent():
             pass
     return random.choice(FALLBACK_UA_LIST)
 
+
 def get_session_with_retries(proxy=None, tor=False):
+    """Create HTTP session with retry configuration and optional proxy."""
     session = requests.Session()
     retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])
     session.mount("https://", HTTPAdapter(max_retries=retries))
@@ -380,6 +493,7 @@ def get_session_with_retries(proxy=None, tor=False):
         "Referer": "https://www.google.com/",
         "DNT": "1",
     })
+    
     if proxy:
         session.proxies = {"http": proxy, "https": proxy}
     elif tor:
@@ -387,6 +501,7 @@ def get_session_with_retries(proxy=None, tor=False):
             "http": "socks5h://127.0.0.1:9050",
             "https": "socks5h://127.0.0.1:9050"
         }
+    
     return session
 
 def check_platform(session, username, platform, info, timeout=15, deep_scan=False):
@@ -631,20 +746,33 @@ def list_platforms(platforms):
         print(Colors.YELLOW + f"- {name} {Colors.CYAN}[Recon: {recon_status}]{Colors.RESET}")
 
 def print_result_table(results):
-    from tabulate import tabulate  # move to top if u wanto
+    """Print results in a formatted table."""
+    if TABULATE_AVAILABLE:
+        from tabulate import tabulate
+        table_data = []
+        for result in results:
+            status = (
+                "AVAILABLE" if result["available"] is True
+                else "TAKEN" if result["available"] is False
+                else "ERROR"
+            )
+            profile_url = result["url"] if result["available"] is False else "-"
+            table_data.append([result["platform"], status, profile_url])
 
-    table_data = []
-    for result in results:
-        status = (
-            "AVAILABLE" if result["available"] is True
-            else "TAKEN" if result["available"] is False
-            else "ERROR"
-        )
-        profile_url = result["url"] if result["available"] is False else "-"
-        table_data.append([result["platform"], status, profile_url])
-
-    headers = ["Platform", "Status", "Profile"]
-    print("\n" + Colors.CYAN + tabulate(table_data, headers=headers, tablefmt="github") + Colors.RESET)
+        headers = ["Platform", "Status", "Profile"]
+        print("\n" + Colors.CYAN + tabulate(table_data, headers=headers, tablefmt="github") + Colors.RESET)
+    else:
+        # Fallback to simple table if tabulate not available
+        table = Table(["Platform", "Status", "Profile"])
+        for result in results:
+            status = (
+                "AVAILABLE" if result["available"] is True
+                else "TAKEN" if result["available"] is False
+                else "ERROR"
+            )
+            profile_url = result["url"] if result["available"] is False else "-"
+            table.add_row([result["platform"], status, profile_url])
+        table.display()
 
 def generate_username_variants(username):
     """Generate leet/fuzzy variants of a username."""
@@ -719,7 +847,9 @@ def generate_username_variants(username):
 
     # Remove original username and deduplicate
     variants.discard(username)
-    # Start with initial username
+    
+    # Use a queue for breadth-first generation to avoid exponential growth
+    queue = deque()
     queue.append(username)
     seen = set([username])
 
@@ -1025,35 +1155,7 @@ def prompt_platform_selection(platforms):
     return selected
 
 def run_metadata_extraction(confirmed_hits, platforms):
-    count = len(confirmed_hits)
-    platform_url_pairs = [(p, url) for p, url in confirmed_hits.items()]
-    # Interactive logic
-    if count <= 5:
-        print(Colors.GREEN + f"[+] Metadata extraction detected for up to {count} platforms." + Colors.RESET)
-        ans = input("Do you want to add extra custom platform URL(s) to check? [y/n]: ").strip().lower()
-        custom_urls = []
-        if ans == "y":
-            custom_urls = prompt_custom_urls()
-        for url in custom_urls:
-            platform_url_pairs.append((url, url))
-    else:
-        print(Colors.YELLOW + "[-] Metadata extraction may take extra time depending on platform speed and rate limits." + Colors.RESET)
-        ans = input("Proceed with all platforms? [y/n]: ").strip().lower()
-        if ans == "y":
-            pass  # use all
-        else:
-            selected = prompt_platform_selection(list(confirmed_hits.keys()))
-            platform_url_pairs = [(p, confirmed_hits[p]) for p in selected]
-            custom_urls = prompt_custom_urls()
-            for url in custom_urls:
-                platform_url_pairs.append((url, url))
-    print(Colors.MAGENTA + "\n[+] Starting metadata extraction...\n" + Colors.RESET)
-    # Run asyncio event loop for metadata extraction
-    loop = asyncio.get_event_loop()
-    meta_results = asyncio.run(extract_metadata_async(platform_url_pairs))
-    display_metadata_table(meta_results)
-# (Function run_metadata_extraction removed as it was unused and duplicated logic.)
-def run_metadata_extraction_interactive(confirmed_hits, platforms):
+    """Run metadata extraction with interactive platform selection."""
     count = len(confirmed_hits)
     platform_url_pairs = []
     custom_urls = []
@@ -1094,9 +1196,11 @@ def run_metadata_extraction_interactive(confirmed_hits, platforms):
                 print(Colors.RED + "[!] Invalid choice. Type 'y' for yes or 'n' to cancel." + Colors.RESET)
 
     print(Colors.MAGENTA + "\n[+] Starting metadata extraction...\n" + Colors.RESET)
-    loop = asyncio.get_event_loop()
-    meta_results = asyncio.run(extract_metadata_async(platform_url_pairs))
-    display_metadata_table(meta_results)
+    try:
+        meta_results = asyncio.run(extract_metadata_async(platform_url_pairs))
+        display_metadata_table(meta_results)
+    except Exception as e:
+        print(Colors.RED + f"[!] Error during metadata extraction: {e}" + Colors.RESET)
 
 def main():
     parser = argparse.ArgumentParser(description="USRLINKS - OSINT Username Hunter")
@@ -1190,7 +1294,7 @@ def main():
     # Metadata extraction logic (interactive, after showing results)
     if getattr(args, "metadata", False):
         confirmed_hits = {r["platform"]: r["url"] for r in results if r["available"] is False or (r["available"] is None and r.get("url"))}
-        run_metadata_extraction_interactive(confirmed_hits, platforms)
+        run_metadata_extraction(confirmed_hits, platforms)
 
     # Fuzzy scan last if requested
     if args.fuzzy:
